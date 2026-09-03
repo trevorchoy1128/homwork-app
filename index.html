@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="交功課">
+<meta name="theme-color" content="#0a84ff">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
+<title>交功課紀錄</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--text:#111;--sub:#6e6e73;--line:#e5e5ea;--blue:#0a84ff;--green:#34c759;--red:#ff3b30;--orange:#ff9500;--wa:#25d366;--hdr:rgba(242,242,247,.9)}
+@media(prefers-color-scheme:dark){:root{--bg:#000;--card:#1c1c1e;--text:#f2f2f7;--sub:#8e8e93;--line:#2c2c2e;--hdr:rgba(0,0,0,.85)}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","PingFang HK","Microsoft JhengHei","Helvetica Neue",sans-serif;font-size:16px;-webkit-text-size-adjust:100%}
+body{padding-bottom:calc(70px + env(safe-area-inset-bottom));min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{border:0;background:none;cursor:pointer}
+header{position:sticky;top:0;z-index:5;background:var(--hdr);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);padding:calc(env(safe-area-inset-top) + 10px) 12px 10px;display:flex;align-items:center;gap:6px;border-bottom:1px solid var(--line);min-height:52px}
+header h1{font-size:18px;margin:0;flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .back,header .txt,header .plus{color:var(--blue);font-size:17px;padding:6px 4px;min-width:64px;text-align:left}
+header .plus{font-size:26px;line-height:1;text-align:right;padding:0 6px}
+header .txt{text-align:right}
+header .hright{min-width:64px;text-align:right}
+.sec{padding:18px 16px 6px;font-size:13px;color:var(--sub);letter-spacing:.03em}
+.card{background:var(--card);margin:6px 12px;border-radius:14px;padding:12px 14px}
+.row{display:flex;align-items:center;gap:10px;min-height:60px}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600;font-size:17px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row .s{font-size:13px;color:var(--sub);margin-top:2px}
+.row .no{min-width:30px;text-align:center;color:var(--sub);font-variant-numeric:tabular-nums;font-size:14px}
+.chev{color:#c7c7cc;font-size:22px}
+.badge{font-size:12px;font-weight:600;padding:4px 9px;border-radius:999px;white-space:nowrap}
+.badge.red{background:rgba(255,59,48,.14);color:var(--red)}
+.badge.green{background:rgba(52,199,89,.16);color:var(--green)}
+.pill{font-size:13px;font-weight:600;padding:6px 10px;border-radius:999px;white-space:nowrap;min-width:72px;text-align:center}
+.pill.done{background:rgba(52,199,89,.18);color:#1f9d45}
+.pill.late{background:rgba(255,149,0,.18);color:#c26e00}
+.pill.missing{background:rgba(255,59,48,.14);color:var(--red)}
+.pill.pending{background:rgba(10,132,255,.12);color:var(--blue)}
+.stu.pending{border-left:4px solid var(--blue)}
+.stu.missing{border-left:4px solid var(--red)}
+.stu.done{border-left:4px solid var(--green)}
+.stu.late{border-left:4px solid var(--orange)}
+.stu{transition:transform .08s}
+.stu:active{transform:scale(.985)}
+.stats{display:flex;justify-content:space-around;text-align:center;padding:14px 8px}
+.stats b{display:block;font-size:24px}
+.stats span{font-size:12px;color:var(--sub)}
+.stats .g b{color:var(--green)}.stats .o b{color:var(--orange)}.stats .r b{color:var(--red)}
+.pad{padding:6px 12px}
+.pad.small{display:flex;gap:8px;flex-wrap:wrap}
+.big{width:100%;padding:15px;border-radius:14px;font-size:17px;font-weight:700}
+.wa{background:var(--wa);color:#fff;border-radius:12px;padding:10px 14px;font-weight:600;white-space:nowrap}
+.wa:disabled,.primary:disabled,.item:disabled{opacity:.45}
+.primary{background:var(--blue);color:#fff;border-radius:12px;padding:14px;width:100%;font-weight:700;font-size:17px;margin-top:8px}
+.secondary{flex:1;background:var(--card);color:var(--blue);border-radius:12px;padding:12px 10px;font-weight:600;font-size:15px;min-width:45%}
+.danger{width:100%;padding:12px;color:var(--red);font-weight:600;margin-top:6px}
+.mini{color:var(--blue);font-size:14px;padding:8px 6px;font-weight:600}
+.txt{color:var(--blue);font-weight:600;padding:8px 4px}
+.seg{display:flex;background:rgba(118,118,128,.14);margin:10px 12px 4px;border-radius:10px;padding:3px}
+.seg button{flex:1;padding:8px;border-radius:8px;font-size:14px;font-weight:600;color:var(--sub)}
+.seg button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:10px 12px 4px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips button{background:var(--card);padding:7px 14px;border-radius:999px;font-size:14px;font-weight:600;white-space:nowrap;border:1px solid var(--line)}
+.chips button.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.hint{font-size:13px;color:var(--sub);padding:6px 16px;line-height:1.5}
+.empty{text-align:center;color:var(--sub);padding:50px 24px;line-height:1.6}
+.list{padding:0;overflow:hidden}
+.item{display:block;width:100%;text-align:left;padding:14px 16px;border-bottom:1px solid var(--line);font-size:16px;font-weight:600;color:var(--text);text-decoration:none}
+.item:last-child{border-bottom:0}
+.item .s{display:block;font-size:13px;color:var(--sub);font-weight:400;margin-top:3px}
+label{display:block;padding:10px 0 4px;font-size:14px;color:var(--sub)}
+label input,label select,label textarea{display:block;width:100%;margin-top:6px;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:16px}
+label textarea{min-height:110px;resize:vertical;line-height:1.5}
+label.switch{display:flex;align-items:center;justify-content:space-between;gap:12px;color:var(--text);font-size:15px}
+label.switch input{width:auto;margin:0;transform:scale(1.4)}
+.form{padding:4px 16px 20px}
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--hdr);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:6px 0 calc(env(safe-area-inset-bottom) + 4px);z-index:5}
+nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--sub);padding:4px 0}
+nav button .i{font-size:22px}
+nav button.on{color:var(--blue)}
+#sheetWrap{position:fixed;inset:0;z-index:20}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow-y:auto;animation:up .22s ease-out}
+.sheet h2{margin:2px 0 6px;font-size:19px}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,10px);background:#333;color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;z-index:30;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+code{background:rgba(118,118,128,.14);padding:2px 5px;border-radius:5px;font-size:13px}
+.info .t{font-weight:700;font-size:17px}.info .s{color:var(--sub);font-size:14px;margin-top:3px}
+.crow{display:flex;gap:6px;margin-top:6px;align-items:center}
+.crow input{margin:0!important;flex:1;min-width:0}
+.crow .c-label{flex:0 0 32%}
+.crow button{padding:6px;font-size:16px;color:var(--sub)}
+.csel{margin-top:4px;padding:6px 8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font-size:14px;max-width:100%}
+.selbar{position:fixed;left:0;right:0;bottom:calc(58px + env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line);display:flex;gap:4px;padding:8px;z-index:6}
+.selbar button{flex:1;padding:10px 2px;border-radius:10px;background:var(--bg);font-weight:600;font-size:13px;white-space:nowrap}
+.selbar button.del{color:var(--red)}
+.selbar button:disabled{opacity:.4}
+.chk{font-size:22px;min-width:28px;text-align:center}
+.row.on{background:rgba(10,132,255,.08)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="sheetWrap" hidden></div>
+<div id="toast"></div>
+<script>
+/* ===================== 資料 ===================== */
+const KEY='hw-tracker-v1';
+const OLD_TEMPLATE='家長您好，{班別} {姓名} 同學未交 {日期} 的功課「{功課}」，請提醒同學明天補交，謝謝！\n— {老師}老師';
+const DEFAULT_TEMPLATE='{姓名}同學你好，你未交 {日期} 的{科目}功課「{功課}」，請明天補交，謝謝！\n— {老師}老師';
+const DEFAULT_TEMPLATE2='{姓名}同學，這是第二次提醒：你仍未交 {日期} 的{科目}功課「{功課}」，請務必明天交回，否則會通知家長。\n— {老師}老師';
+const DEFAULT_TEMPLATE_P='家長您好，{班別} {姓名} 同學仍未交 {日期} 的{科目}功課「{功課}」，已提醒多次，請協助督促同學盡快補交，謝謝！\n— {老師}老師';
+const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+const blank=()=>({settings:{teacher:'',cc:'852',template:DEFAULT_TEMPLATE,gasUrl:'',sheetUrl:'',lastSync:'',syncedRev:0,cloudVer:0,autoSync:true,waMode:'app',template2:DEFAULT_TEMPLATE2,templateParent:DEFAULT_TEMPLATE_P,alertMissing:3},students:[],assignments:[],records:{},excelBase:null,meta:{rev:0,editedAt:0}});
+let S=load();
+function load(){try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.students)){s.settings=Object.assign(blank().settings,s.settings||{});if(s.settings.template===OLD_TEMPLATE)s.settings.template=DEFAULT_TEMPLATE;s.records=s.records||{};s.assignments=s.assignments||[];s.meta=Object.assign({rev:0,editedAt:0},s.meta||{});s.students.forEach(st=>{if(!Array.isArray(st.subjects))st.subjects=[];if(!Array.isArray(st.contacts))st.contacts=st.phone?[{label:'',phone:st.phone}]:[];syncPhone(st);});Object.values(s.records).forEach(rs=>Object.values(rs).forEach(r=>{if(r.remindedAt&&!r.reminds)r.reminds=[{at:r.remindedAt,kind:'s'}];}));return s;}}catch(e){}return blank();}
+function syncPhone(s){s.contacts=(s.contacts||[]).filter(c=>c&&c.phone);s.phone=s.contacts.length?s.contacts[0].phone:'';}
+const contactLabel=(c,i)=>c.label||('電話 '+(i+1));
+function persist(){localStorage.setItem(KEY,JSON.stringify(S));}
+function save(){S.meta.rev=(S.meta.rev||0)+1;S.meta.editedAt=Date.now();persist();scheduleAutoSync();}
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const pad2=n=>String(n).padStart(2,'0');
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());};
+const nowStr=()=>{const d=new Date();return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());};
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const byId=(arr,id)=>arr.find(x=>x.id===id);
+const classes=()=>[...new Set(S.students.map(s=>s.cls))].sort();
+const sortStu=(a,b)=>a.cls.localeCompare(b.cls)||((+a.no||999)-(+b.no||999))||a.name.localeCompare(b.name,'zh-Hant');
+const studentsOf=cls=>S.students.filter(s=>s.cls===cls).sort(sortStu);
+const subjectsAll=()=>[...new Set(S.students.flatMap(s=>s.subjects||[]))].sort((a,b)=>a.localeCompare(b,'zh-Hant'));
+const parseSubj=v=>[...new Set(String(v==null?'':v).split(/[,，、;；/|]+/).map(x=>x.trim()).filter(Boolean))];
+const hasSubj=(s,subj)=>!subj||(s.subjects||[]).includes(subj);
+const roster=a=>studentsOf(a.cls).filter(s=>hasSubj(s,a.subject));
+const recOf=(aid,sid)=>(S.records[aid]||{})[sid]||{};
+const statusOf=(aid,sid)=>recOf(aid,sid).status||'missing';
+const LABEL={done:'已交',late:'遲交',missing:'未交'};
+function fmtDate(d){const [y,m,dd]=d.split('-').map(Number);const w='日一二三四五六'[new Date(y,m-1,dd).getDay()];return `${m}月${dd}日（${w}）`;}
+function setStatus(aid,sid,st){S.records[aid]=S.records[aid]||{};const r=S.records[aid][sid]||{};r.status=st;r.updatedAt=nowStr();if(st==='late'){if(!r.lateAt)r.lateAt=today();}else delete r.lateAt;S.records[aid][sid]=r;save();render();}
+// 未交 → 已交：若已過功課日期或已提醒過，視為補交（遲交）
+function toggle(aid,sid){const a=byId(S.assignments,aid),r=recOf(aid,sid),st=statusOf(aid,sid);if(st==='missing')setStatus(aid,sid,(a.date<today()||r.remindedAt)?'late':'done');else setStatus(aid,sid,'missing');}
+function markLate(aid,sid){setStatus(aid,sid,'late');toast('已記錄補交');}
+const isPending=a=>!!a.due&&a.due>today();
+const fmtMD=d=>{const p=String(d||'').split('-');return p.length===3?(+p[1])+'/'+(+p[2]):d;};
+const remindCount=r=>(r.reminds||[]).length;
+const parentContact=s=>(s.contacts||[]).find(c=>/家長|父|母|媽|爸|parent/i.test(c.label||''))||((s.contacts||[]).length>1?s.contacts[1]:null);
+const assignmentsOf=s=>S.assignments.filter(a=>a.cls===s.cls&&hasSubj(s,a.subject)).sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));
+function studentStats(s){let total=0,missing=0,late=0;assignmentsOf(s).forEach(a=>{if(isPending(a))return;total++;const st=statusOf(a.id,s.id);if(st==='missing')missing++;else if(st==='late')late++;});return{total,missing,late};}
+const weekRange=()=>{const d=new Date();const mon=new Date(d);mon.setDate(d.getDate()-((d.getDay()+6)%7));const sun=new Date(mon);sun.setDate(mon.getDate()+6);const f=x=>x.getFullYear()+'-'+pad2(x.getMonth()+1)+'-'+pad2(x.getDate());return[f(mon),f(sun)];};
+function overview(date){const items=[];S.assignments.filter(a=>!isPending(a)&&(!date||a.date===date||a.due===date)).sort((a,b)=>a.cls.localeCompare(b.cls)||b.date.localeCompare(a.date)).forEach(a=>{const miss=roster(a).filter(s=>statusOf(a.id,s.id)==='missing');if(miss.length)items.push({a,miss});});return{items,count:items.reduce((n,x)=>n+x.miss.length,0)};}
+function quickMissing(aid){const a=byId(S.assignments,aid);const el=document.getElementById('qm');const nos=(el.value||'').split(/[^0-9]+/).filter(Boolean).map(Number);if(!nos.length){toast('請輸入學號');return;}S.records[aid]=S.records[aid]||{};const list=roster(a);const found=new Set();let hit=0;list.forEach(s=>{const miss=s.no!==''&&nos.includes(+s.no);const r=S.records[aid][s.id]||{};if(miss){r.status='missing';hit++;found.add(+s.no);}else if(r.status!=='late')r.status='done';r.updatedAt=nowStr();S.records[aid][s.id]=r;});const nf=nos.filter(n=>!found.has(n));save();render();toast(`已標記 ${hit} 人未交，其餘已交${nf.length?'；找不到學號 '+nf.join(', '):''}`);}
+function bulk(aid,st){const a=byId(S.assignments,aid);S.records[aid]=S.records[aid]||{};roster(a).forEach(s=>{S.records[aid][s.id]=Object.assign(S.records[aid][s.id]||{},{status:st,updatedAt:nowStr()});});save();render();}
+function stats(a){let done=0,late=0,missing=0;const list=roster(a);list.forEach(s=>{const st=statusOf(a.id,s.id);if(st==='done')done++;else if(st==='late')late++;else missing++;});return{total:list.length,done,late,missing};}
+
+/* ===================== WhatsApp ===================== */
+function normPhone(p){let d=String(p||'').replace(/\D/g,'');if(!d)return'';const cc=(S.settings.cc||'').replace(/\D/g,'');if(cc&&d.length<=8)d=cc+d;return d;}
+function message(a,s,kind){const t=kind==='p'?(S.settings.templateParent||DEFAULT_TEMPLATE_P):kind==='s2'?(S.settings.template2||S.settings.template||DEFAULT_TEMPLATE2):(S.settings.template||DEFAULT_TEMPLATE);return t.replace(/\{姓名\}/g,s.name).replace(/\{班別\}/g,s.cls).replace(/\{功課\}/g,a.title).replace(/\{科目\}/g,a.subject||'').replace(/\{日期\}/g,a.date).replace(/\{學號\}/g,s.no||'').replace(/\{老師\}/g,S.settings.teacher||'');}
+const useApp=()=>isIOS&&S.settings.waMode!=='web';
+function waUrl(phone,text){const p=normPhone(phone),t=encodeURIComponent(text);return useApp()?`whatsapp://send?phone=${p}&text=${t}`:`https://wa.me/${p}?text=${t}`;}
+function openWA(url){if(useApp())location.href=url;else window.open(url,'_blank');}
+function remindStudent(aid,sid,kind){const a=byId(S.assignments,aid),s=byId(S.students,sid);const r0=recOf(aid,sid);if(!kind)kind=remindCount(r0)>=1?'s2':'s';let phone=s.phone;if(kind==='p'){const pc=parentContact(s);if(!pc){alert('此學生未有家長電話。請在學生資料加入第二個電話並備註「家長」。');return;}phone=pc.phone;}if(!normPhone(phone)){alert('此學生未有電話號碼，請先在「學生」頁補上。');return;}S.records[aid]=S.records[aid]||{};const r=S.records[aid][sid]||{status:'missing'};r.reminds=r.reminds||[];r.reminds.push({at:nowStr(),kind,to:normPhone(phone)});r.remindedAt=nowStr();S.records[aid][sid]=r;save();openWA(waUrl(phone,message(a,s,kind)));render();}
+function remindNext(aid){const a=byId(S.assignments,aid);const list=roster(a).filter(s=>statusOf(aid,s.id)==='missing'&&!remindCount(recOf(aid,s.id))&&normPhone(s.phone));if(!list.length){toast('所有未交學生已提醒');return;}remindStudent(aid,list[0].id);}
+function remindNextAll(){const ov=overview((V.ovMode||'today')==='today'?today():null);for(const x of ov.items)for(const s of x.miss){if(!remindCount(recOf(x.a.id,s.id))&&normPhone(s.phone)){remindStudent(x.a.id,s.id);return;}}toast('全部已提醒');}
+function resetReminded(aid){if(!confirm('清除此功課所有「已提醒」紀錄？'))return;Object.values(S.records[aid]||{}).forEach(r=>{delete r.remindedAt;delete r.reminds;});save();render();}
+function remindRow(a,s){const r=recOf(a.id,s.id),ok=!!normPhone(s.phone),cs=s.contacts||[],n=remindCount(r),pc=parentContact(s);return `<div class="card row"><div class="no">${esc(s.no||'')}</div><div class="grow"><div class="t" onclick="go({page:'student',id:'${s.id}'})">${esc(s.name)}</div><div class="s">${ok?(cs.length>1?'':esc(s.phone)):'⚠️ 未有電話'}${n?(ok&&cs.length===1?' · ':'')+`已提醒 ${n} 次（${esc(r.remindedAt)}）`:''}</div>${cs.length>1?`<select class="csel" onchange="setDefaultContact('${s.id}',+this.value)">${cs.map((c,i)=>`<option value="${i}" ${i===0?'selected':''}>${esc(contactLabel(c,i))} ${esc(c.phone)}</option>`).join('')}</select>`:''}${pc&&n>=1?`<div><button class="mini" style="color:var(--orange);padding:4px 0" onclick="remindStudent('${a.id}','${s.id}','p')">📞 通知家長（${esc(pc.label||'電話 2')} ${esc(pc.phone)}）</button></div>`:''}</div><button class="mini" onclick="markLate('${a.id}','${s.id}')">已補交</button><button class="wa" onclick="remindStudent('${a.id}','${s.id}')" ${ok?'':'disabled'}>${n?`第 ${n+1} 次`:'WhatsApp'}</button></div>`;}
+async function shareImage(aid){const a=byId(S.assignments,aid);const miss=roster(a).filter(s=>statusOf(a.id,s.id)==='missing');const W=900,pad=50,lh=56,F='-apple-system,"PingFang TC","PingFang HK","Microsoft JhengHei",sans-serif';const lines=miss.map(s=>(s.no?s.no+'. ':'')+s.name);const cols=lines.length>12?2:1,rows=Math.max(1,Math.ceil(lines.length/cols));const H=pad+250+rows*lh+90;const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,W,H);x.fillStyle='#0a84ff';x.fillRect(0,0,W,14);x.fillStyle='#111';x.font='bold 44px '+F;x.fillText(`${a.cls}${a.subject?' '+a.subject:''} 功課追收`,pad,pad+50);x.fillStyle='#444';x.font='30px '+F;x.fillText(`功課：${a.title}`,pad,pad+108);x.fillText(`日期：${fmtDate(a.date)}${a.due?'　收簿日：'+fmtDate(a.due):''}`,pad,pad+152);x.fillStyle='#ff3b30';x.font='bold 32px '+F;x.fillText(`未交同學（${miss.length} 人）`,pad,pad+212);x.fillStyle='#111';x.font='34px '+F;lines.forEach((t,i)=>{const col=Math.floor(i/rows),row=i%rows;x.fillText(t,pad+col*((W-pad*2)/cols),pad+250+row*lh+36);});if(!lines.length)x.fillText('🎉 全部已交',pad,pad+286);x.fillStyle='#666';x.font='26px '+F;x.fillText(`請以上同學盡快補交，謝謝！${S.settings.teacher?'　— '+S.settings.teacher+'老師':''}`,pad,H-40);c.toBlob(b=>deliver(b,`未交名單_${a.cls}_${a.date}.png`),'image/png');}
+function summaryText(aid){const a=byId(S.assignments,aid);const miss=roster(a).filter(s=>statusOf(a.id,s.id)==='missing');return `【${a.cls}${a.subject?' '+a.subject:''} 功課追收】\n功課：${a.title}\n日期：${a.date}\n未交同學（${miss.length} 人）：\n`+miss.map(s=>`• ${s.no?s.no+' ':''}${s.name}`).join('\n')+`\n\n請以上同學盡快補交，謝謝！${S.settings.teacher?'\n— '+S.settings.teacher+'老師':''}`;}
+function shareSummary(aid){const t=encodeURIComponent(summaryText(aid));openWA(useApp()?'whatsapp://send?text='+t:'https://wa.me/?text='+t);}
+async function copyText(t){try{await navigator.clipboard.writeText(t);toast('已複製');}catch(e){prompt('請手動複製：',t);}}
+
+/* ===================== 畫面 ===================== */
+let V={tab:'hw',page:null,id:null,filter:'all',cls:'all',hwCls:'all',subj:'all',hwSubj:'all',q:'',period:'all',ovMode:'today'};
+function go(p){if('tab' in p||'page' in p)V.sel=null;Object.assign(V,p);render();window.scrollTo(0,0);}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
+function sheet(html){const w=document.getElementById('sheetWrap');w.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet">${html}</div>`;w.hidden=false;}
+function closeSheet(){document.getElementById('sheetWrap').hidden=true;}
+function header(title,back,right){return `<header>${back?`<button class="back" onclick="${back}">‹ 返回</button>`:'<span style="min-width:64px"></span>'}<h1>${esc(title)}</h1><div class="hright">${right||''}</div></header>`;}
+function chips(list,cur,key){if(list.length<2)return'';return `<div class="chips"><button class="${cur==='all'?'on':''}" onclick="go({${key}:'all'})">全部</button>${list.map(c=>`<button class="${cur===c?'on':''}" onclick="go({${key}:'${esc(c)}'})">${esc(c)}</button>`).join('')}</div>`;}
+function tabbar(){const t=[['hw','📚','功課'],['students','👥','學生'],['export','📤','匯出'],['settings','⚙️','設定']];return `<nav>${t.map(([k,i,l])=>`<button class="${V.tab===k?'on':''}" onclick="go({tab:'${k}',page:null})"><span class="i">${i}</span>${l}</button>`).join('')}</nav>`;}
+function render(){let h;if(V.page==='detail')h=viewDetail();else if(V.page==='remind')h=viewRemind();else if(V.page==='today')h=viewToday();else if(V.page==='student')h=viewStudent();else if(V.tab==='students')h=viewStudents();else if(V.tab==='export')h=viewExport();else if(V.tab==='settings')h=viewSettings();else h=viewHW();document.getElementById('app').innerHTML=h+tabbar();}
+
+/* ---- 功課列表 ---- */
+function viewHW(){const cls=classes();let list=S.assignments.slice().sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));if(V.hwCls!=='all')list=list.filter(a=>a.cls===V.hwCls);if(V.hwSubj!=='all')list=list.filter(a=>a.subject===V.hwSubj);
+ if(V.period==='today')list=list.filter(a=>a.date===today()||a.due===today());else if(V.period==='week'){const[m,su]=weekRange();list=list.filter(a=>(a.date>=m&&a.date<=su)||(a.due>=m&&a.due<=su));}
+ let h=header('功課紀錄',null,`<button class="plus" onclick="openNewHW()">＋</button>`)+chips(cls,V.hwCls,'hwCls')+chips(subjectsAll(),V.hwSubj,'hwSubj');
+ if(S.assignments.length){const ov=overview(today()),ovAll=overview(null);h+=`<div class="card row" onclick="go({page:'today',ovMode:'today'})"><div class="grow"><div class="t">📋 未交總覽</div><div class="s">今日 ${ov.count} 人未交 · 累計 ${ovAll.count} 人次未交</div></div>${ovAll.count?`<span class="badge red">${ov.count}/${ovAll.count}</span>`:`<span class="badge green">全部已交</span>`}<span class="chev">›</span></div>`;
+  h+=`<div class="seg">${[['all','全部'],['today','今日'],['week','本週']].map(([k,l])=>`<button class="${(V.period||'all')===k?'on':''}" onclick="go({period:'${k}'})">${l}</button>`).join('')}</div>`;}
+ if(!S.students.length)h+=`<div class="empty">請先到「學生」頁加入學生名單，<br>再回來新增功課。</div>`;else if(!list.length)h+=`<div class="empty">${S.assignments.length?'此範圍沒有功課':'尚未有功課紀錄<br>按右上角「＋」新增'}</div>`;
+ let last='';list.forEach(a=>{const st=stats(a),pend=isPending(a);if(a.date!==last){h+=`<div class="sec">${esc(fmtDate(a.date))}</div>`;last=a.date;}h+=`<div class="card row" onclick="go({page:'detail',id:'${a.id}',filter:'all'})"><div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${esc(a.cls)}${a.subject?' · '+esc(a.subject):''} · 已交 ${st.done+st.late}/${st.total}${st.late?` · 遲交 ${st.late}`:''}${a.due?` · 收簿日 ${esc(fmtMD(a.due))}`:''}</div></div>${pend?`<span class="badge" style="background:rgba(10,132,255,.12);color:var(--blue)">尚未收</span>`:st.missing?`<span class="badge red">${st.missing} 人未交</span>`:`<span class="badge green">全部已交</span>`}<span class="chev">›</span></div>`;});
+ return h;}
+function hwForm(a){const cls=classes(),subs=subjectsAll();const curS=a?(a.subject||''):(V.hwSubj!=='all'?V.hwSubj:'');let h='';
+ if(a)h+=`<label>班別<select id="f-cls">${cls.map(c=>`<option ${c===a.cls?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`;
+ else{const def=V.hwCls!=='all'?V.hwCls:cls[0];h+=`<label>班別（可多選，一次派給多班）<div class="chips" id="f-clschips" style="padding:8px 0 0">${cls.map(c=>`<button type="button" class="${c===def?'on':''}" data-c="${esc(c)}" onclick="this.classList.toggle('on')">${esc(c)}</button>`).join('')}</div></label>`;}
+ if(subs.length)h+=`<label>科目（只列出修讀該科的學生）<select id="f-subj"><option value="">不分科目（全班）</option>${subs.map(c=>`<option value="${esc(c)}" ${c===curS?'selected':''}>${esc(c)}</option>`).join('')}</select></label>`;
+ h+=`<label>功課名稱<input id="f-title" value="${esc(a?a.title:'')}" placeholder="例：數學工作紙 P.12"></label><div style="display:flex;gap:10px"><label style="flex:1">日期<input id="f-date" type="date" value="${a?a.date:today()}"></label><label style="flex:1">收簿日（選填）<input id="f-due" type="date" value="${a?(a.due||''):''}"></label></div><div class="hint" style="padding:2px 0 0">設了收簿日，未到期前會顯示「尚未收」，不會計入未交總覽。</div>`;return h;}
+function openNewHW(){if(!classes().length){alert('請先加入學生');return;}sheet(`<h2>新增功課</h2>${hwForm()}<label>未交學號（選填，可直接輸入欠交同學的學號，其餘自動已交）<input id="f-miss" inputmode="numeric" placeholder="例：3 7 12"></label><label class="switch"><span>預設全部已交<br><small style="color:var(--sub)">之後只需剔走未交的同學</small></span><input id="f-all" type="checkbox" checked></label><button class="primary" onclick="saveNewHW()">建立</button>`);setTimeout(()=>document.getElementById('f-title').focus(),80);}
+function saveNewHW(){const title=document.getElementById('f-title').value.trim();if(!title){alert('請輸入功課名稱');return;}const clsSel=[...document.querySelectorAll('#f-clschips button.on')].map(b=>b.dataset.c);if(!clsSel.length){alert('請選擇至少一個班別');return;}const subject=(document.getElementById('f-subj')||{value:''}).value,date=document.getElementById('f-date').value||today(),due=document.getElementById('f-due').value||'';const missNos=document.getElementById('f-miss').value.split(/[^0-9]+/).filter(Boolean).map(Number);const allDone=document.getElementById('f-all').checked;const made=[];
+ clsSel.forEach(cls=>{const a={id:uid(),cls,subject,title,date,due,created:Date.now()};S.assignments.push(a);S.records[a.id]={};roster(a).forEach(s=>{const miss=missNos.length&&s.no!==''&&missNos.includes(+s.no);if(miss)S.records[a.id][s.id]={status:'missing',updatedAt:nowStr()};else if(allDone||missNos.length)S.records[a.id][s.id]={status:'done',updatedAt:nowStr()};});made.push(a);});
+ save();closeSheet();if(made.length===1)go({page:'detail',id:made[0].id,filter:'all'});else{go({page:null});toast(`已為 ${made.length} 班建立功課`);}}
+function editHW(id){const a=byId(S.assignments,id);sheet(`<h2>編輯功課</h2>${hwForm(a)}<button class="primary" onclick="saveEditHW('${id}')">儲存</button><button class="danger" onclick="delHW('${id}')">刪除此功課紀錄</button>`);}
+function saveEditHW(id){const a=byId(S.assignments,id);const t=document.getElementById('f-title').value.trim();if(!t)return;a.title=t;a.cls=document.getElementById('f-cls').value;a.subject=(document.getElementById('f-subj')||{value:''}).value;a.date=document.getElementById('f-date').value||a.date;a.due=document.getElementById('f-due').value||'';save();closeSheet();render();}
+function delHW(id){if(!confirm('確定刪除此功課紀錄？'))return;S.assignments=S.assignments.filter(a=>a.id!==id);delete S.records[id];save();closeSheet();go({page:null});}
+
+/* ---- 功課詳情 ---- */
+function viewDetail(){const a=byId(S.assignments,V.id);if(!a){V.page=null;return viewHW();}const st=stats(a);let list=roster(a);
+ if(V.filter==='missing')list=list.filter(s=>statusOf(a.id,s.id)==='missing');else if(V.filter==='done')list=list.filter(s=>statusOf(a.id,s.id)!=='missing');
+ let h=header(a.title,"go({page:null})",`<button class="txt" onclick="editHW('${a.id}')">編輯</button>`);
+ h+=`<div class="card stats"><div><b>${st.total}</b><span>總人數</span></div><div class="g"><b>${st.done}</b><span>已交</span></div><div class="o"><b>${st.late}</b><span>遲交</span></div><div class="r"><b>${st.missing}</b><span>未交</span></div></div>`;
+ const pend=isPending(a);if(pend)h+=`<div class="hint" style="color:var(--blue)">📅 收簿日 ${esc(fmtDate(a.due))} 未到，此功課顯示為「尚未收」，未交總覽暫不計算。</div>`;
+ h+=`<div class="pad"><button class="wa big" onclick="go({page:'remind'})" ${st.missing&&!pend?'':'disabled'}>💬 一鍵 WhatsApp 追收（${st.missing} 人未交）</button></div>`;
+ h+=`<div class="pad" style="display:flex;gap:8px"><input id="qm" inputmode="numeric" placeholder="輸入未交學號，例：3 7 12" onkeydown="if(event.key==='Enter')quickMissing('${a.id}')" style="flex:1;min-width:0;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:16px"><button class="primary" style="width:auto;margin:0;padding:10px 14px;font-size:15px" onclick="quickMissing('${a.id}')">標記未交</button></div>`;
+ h+=`<div class="seg">${[['all','全部'],['missing','未交'],['done','已交']].map(([k,l])=>`<button class="${V.filter===k?'on':''}" onclick="go({filter:'${k}'})">${l}</button>`).join('')}</div>`;
+ h+=`<div class="pad small" style="justify-content:space-between"><button class="mini" onclick="bulk('${a.id}','done')">全部標為已交</button><button class="mini" onclick="bulk('${a.id}','missing')">全部標為未交</button></div>`;
+ h+=`<div class="hint">點一下學生即可切換「已交 / 未交」；已過日期或已提醒的未交學生改為已交時，會自動記為「遲交（補交）」。</div>`;
+ list.forEach(s=>{const stt=statusOf(a.id,s.id),r=recOf(a.id,s.id),n=remindCount(r);h+=`<div class="card row stu ${stt}" onclick="toggle('${a.id}','${s.id}')"><div class="no">${esc(s.no||'')}</div><div class="grow"><div class="t">${esc(s.name)}</div>${n||r.lateAt?`<div class="s">${n?`已提醒 ${n} 次 ${esc(r.remindedAt)}`:''}${r.lateAt?(n?' · ':'')+'補交 '+esc(fmtMD(r.lateAt)):''}</div>`:''}</div>${stt==='missing'?`<button class="mini" onclick="event.stopPropagation();setStatus('${a.id}','${s.id}','late')">遲交</button>`:''}<span class="pill ${stt}">${{done:'✓ 已交',late:'遲交',missing:'✗ 未交'}[stt]}</span></div>`;});
+ if(!list.length)h+=`<div class="empty">${V.filter==='missing'?'🎉 沒有未交學生':'沒有學生'}</div>`;
+ return h;}
+
+/* ---- 追收 ---- */
+function viewRemind(){const a=byId(S.assignments,V.id);if(!a){V.page=null;return viewHW();}const miss=roster(a).filter(s=>statusOf(a.id,s.id)==='missing');const fresh=miss.filter(s=>!remindCount(recOf(a.id,s.id)));const again=miss.filter(s=>remindCount(recOf(a.id,s.id)));const pending=fresh.filter(s=>normPhone(s.phone));
+ let h=header('WhatsApp 追收',"go({page:'detail'})",`<button class="txt" onclick="resetReminded('${a.id}')">重設</button>`);
+ h+=`<div class="card info"><div class="t">${esc(a.cls)}${a.subject?' '+esc(a.subject):''} · ${esc(a.title)}</div><div class="s">${esc(fmtDate(a.date))}${a.due?' · 收簿日 '+esc(fmtMD(a.due)):''} · ${miss.length} 人未交</div></div>`;
+ h+=`<div class="pad"><button class="wa big" onclick="remindNext('${a.id}')" ${pending.length?'':'disabled'}>💬 傳送給下一位（尚餘 ${pending.length} 人未提醒）</button></div><div class="hint">每按一次會開啟 WhatsApp 並自動填好訊息，在 WhatsApp 按「傳送」後返回本 App 再按一次即可。第二次起自動改用較嚴厲的範本；提醒過的學生可一鍵通知家長。範本可在「設定」修改。</div>`;
+ h+=`<div class="pad small"><button class="secondary" onclick="shareSummary('${a.id}')">📣 傳名單至群組</button><button class="secondary" onclick="shareImage('${a.id}')">🖼 名單出圖</button><button class="secondary" onclick="copyText(summaryText('${a.id}'))">📋 複製名單</button></div>`;
+ if(again.length){h+=`<div class="sec">已提醒仍未交（${again.length} 人）</div>`;again.forEach(s=>h+=remindRow(a,s));}
+ if(fresh.length){h+=`<div class="sec">未提醒（${fresh.length} 人）</div>`;fresh.forEach(s=>h+=remindRow(a,s));}
+ if(!miss.length)h+=`<div class="empty">🎉 全部已交</div>`;
+ return h;}
+/* ---- 未交總覽 ---- */
+function viewToday(){const mode=V.ovMode||'today';const ov=overview(mode==='today'?today():null);let pend=0;ov.items.forEach(x=>x.miss.forEach(s=>{if(!remindCount(recOf(x.a.id,s.id))&&normPhone(s.phone))pend++;}));
+ let h=header('未交總覽',"go({page:null})");
+ h+=`<div class="seg">${[['today','今日'],['all','全部未交']].map(([k,l])=>`<button class="${mode===k?'on':''}" onclick="go({ovMode:'${k}'})">${l}</button>`).join('')}</div>`;
+ h+=`<div class="hint">${mode==='today'?'今日派發或今日收簿的功課':'所有功課'}中未交的學生，共 ${ov.count} 人次。</div>`;
+ h+=`<div class="pad"><button class="wa big" onclick="remindNextAll()" ${pend?'':'disabled'}>💬 傳送給下一位（尚餘 ${pend} 人未提醒）</button></div>`;
+ if(!ov.items.length)h+=`<div class="empty">🎉 ${mode==='today'?'今日':''}沒有未交</div>`;
+ ov.items.forEach(({a,miss})=>{h+=`<div class="sec" onclick="go({page:'detail',id:'${a.id}',filter:'missing'})" style="cursor:pointer">${esc(a.cls)}${a.subject?' '+esc(a.subject):''} · ${esc(a.title)} · ${esc(fmtMD(a.date))}（${miss.length} 人）›</div>`;miss.forEach(s=>h+=remindRow(a,s));});
+ return h;}
+/* ---- 學生個人頁 ---- */
+function viewStudent(){const s=byId(S.students,V.id);if(!s){V.page=null;return viewStudents();}const st=studentStats(s),th=S.settings.alertMissing||3,pc=parentContact(s);
+ let h=header(s.name,"go({page:null})",`<button class="txt" onclick="openStudent('${s.id}')">編輯</button>`);
+ h+=`<div class="card info"><div class="t">${esc(s.cls)}${s.no?' ('+esc(s.no)+')':''} ${esc(s.name)}</div><div class="s">${(s.contacts||[]).map((c,i)=>esc(contactLabel(c,i))+' '+esc(c.phone)).join(' · ')||'⚠️ 未有電話'}</div>${(s.subjects||[]).length?`<div class="s">科目：${esc(s.subjects.join('、'))}</div>`:''}</div>`;
+ h+=`<div class="card stats"><div><b>${st.total}</b><span>功課總數</span></div><div class="r"><b>${st.missing}</b><span>未交</span></div><div class="o"><b>${st.late}</b><span>遲交</span></div><div><b>${st.total?Math.round((st.missing+st.late)/st.total*100):0}%</b><span>欠交率</span></div></div>`;
+ if(st.missing>=th)h+=`<div class="hint" style="color:var(--red)">⚠️ 累計未交 ${st.missing} 次，已達門檻（${th} 次），建議通知家長或班主任。</div>`;
+ h+=`<div class="pad small"><button class="secondary" onclick="openWA(waUrl('${esc(s.phone)}',''))" ${normPhone(s.phone)?'':'disabled'}>💬 WhatsApp 學生</button>${pc?`<button class="secondary" onclick="openWA(waUrl('${esc(pc.phone)}',''))">📞 WhatsApp ${esc(pc.label||'電話 2')}</button>`:''}</div>`;
+ h+=`<div class="sec">備註</div><div class="card"><textarea style="width:100%;border:0;background:none;min-height:56px;resize:vertical;font-size:15px;padding:0" placeholder="例：家中無 WhatsApp，用電話聯絡" onchange="setNote('${s.id}',this.value)">${esc(s.note||'')}</textarea></div>`;
+ h+=`<div class="sec">功課紀錄</div>`;const as=assignmentsOf(s);if(!as.length)h+=`<div class="empty">尚未有功課</div>`;
+ as.forEach(a=>{const stt=isPending(a)?'pending':statusOf(a.id,s.id),r=recOf(a.id,s.id),n=remindCount(r);h+=`<div class="card row stu ${stt}" onclick="go({page:'detail',id:'${a.id}',filter:'all'})"><div class="grow"><div class="t">${esc(a.title)}</div><div class="s">${esc(fmtDate(a.date))}${a.subject?' · '+esc(a.subject):''}${r.lateAt?' · 補交 '+esc(fmtMD(r.lateAt)):''}${n?' · 提醒 '+n+' 次':''}</div></div><span class="pill ${stt}">${{done:'✓ 已交',late:'遲交',missing:'✗ 未交',pending:'尚未收'}[stt]}</span></div>`;});
+ return h;}
+async function testConn(){const url=S.settings.gasUrl,el=document.getElementById('connRes');if(!url){el.textContent='請先輸入 Apps Script 網址';return;}el.textContent='測試中…';try{const r=await fetch(url+(url.includes('?')?'&':'?')+'action=ping&_='+Date.now());const j=await r.json();if(!j.ok)throw new Error(j.error||'回應異常');el.textContent='✓ 連線成功。'+(S.settings.autoSync?'已開啟自動同步。':'請開啟自動同步。');toast('連線成功');pullCloud(true);}catch(e){el.textContent='✗ 連線失敗：'+e.message+'。請檢查網址是否以 /exec 結尾、部署時「誰可以存取」是否「任何人」。';}}
+async function copyCodeGs(){try{const r=await fetch('Code.gs');if(!r.ok)throw 0;copyText(await r.text());}catch(e){alert('無法讀取 Code.gs。請在 App 資料夾內開啟 Code.gs 檔案，全選複製。');}}
+function setNote(id,v){const s=byId(S.students,id);if(s){s.note=v.trim();save();}}
+
+/* ---- 學生 ---- */
+function viewStudents(){const cls=classes(),subs=subjectsAll();let list=S.students.slice().sort(sortStu);if(V.cls!=='all')list=list.filter(s=>s.cls===V.cls);if(V.subj!=='all')list=list.filter(s=>hasSubj(s,V.subj));const q=(V.q||'').trim().toLowerCase();if(q)list=list.filter(s=>[s.name,s.phone,s.no,s.cls,...(s.subjects||[])].some(v=>String(v).toLowerCase().includes(q)));
+ const sel=V.sel;
+ let h=header(sel?`已選 ${sel.size} 人`:'學生名單',sel?"toggleSel()":null,sel?`<button class="txt" onclick="selAll()">全選</button>`:`<button class="txt" onclick="toggleSel()">選取</button><button class="plus" onclick="openStudent()">＋</button>`)+chips(cls,V.cls,'cls')+chips(subs,V.subj,'subj');
+ if(sel){V._visible=list.map(s=>s.id);h+=`<div class="hint">點選學生後，用底部按鈕批量刪除、改班別或加減科目。</div>`;}
+ h+=`<div class="pad"><input id="q" type="search" placeholder="🔍 搜尋姓名、電話、科目" value="${esc(V.q||'')}" oninput="searchStu(this.value)" style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card);font-size:16px"></div>`;
+ h+=`<div class="pad small"><button class="secondary" onclick="document.getElementById('xlsIn').click()">📗 從 Excel 匯入</button><input id="xlsIn" type="file" accept=".xlsx,.xls,.xlsm,.csv" hidden onchange="importExcelFile(this)"><button class="secondary" onclick="openImport()">📥 批量貼上匯入</button><button class="secondary" onclick="importFromSheet()">☁️ 從 Google Sheet 匯入</button><button class="secondary" onclick="downloadTemplate()">📄 下載 Excel 名單範本</button><button class="secondary" onclick="openClassMgr()">🏷 班別管理（改名／刪除）</button></div>`;
+ if(S.excelBase)h+=`<div class="hint">已連結 Excel：<b>${esc(S.excelBase.name)}</b>（匯出時會保留其原有工作表並寫入紀錄）</div>`;
+ if(!list.length)h+=`<div class="empty">尚未有學生<br>按「＋」逐個新增，或用「批量貼上匯入」<br>一次過貼上整班名單</div>`;
+ let last='';list.forEach(s=>{if(V.cls==='all'&&s.cls!==last){h+=`<div class="sec">${esc(s.cls)}（${studentsOf(s.cls).length} 人）</div>`;last=s.cls;}const on=sel&&sel.has(s.id),ms=studentStats(s).missing,th=S.settings.alertMissing||3;h+=`<div class="card row ${on?'on':''}" onclick="${sel?`selToggle('${s.id}')`:`go({page:'student',id:'${s.id}'})`}">${sel?`<div class="chk">${on?'☑':'☐'}</div>`:''}<div class="no">${esc(s.no||'')}</div><div class="grow"><div class="t">${esc(s.name)}</div><div class="s">${s.phone?esc(s.phone)+((s.contacts||[]).length>1?`（${esc(contactLabel(s.contacts[0],0))}，另 ${s.contacts.length-1} 個）`:''):'⚠️ 未有電話'}${(s.subjects||[]).length?' · '+esc(s.subjects.join('、')):''}${s.note?' · 📝':''}</div></div>${ms?`<span class="badge ${ms>=th?'red':''}" style="${ms>=th?'':'background:rgba(255,149,0,.16);color:#c26e00'}">未交 ${ms}</span>`:''}${sel?'':'<span class="chev">›</span>'}</div>`;});
+ if(!list.length&&S.students.length)h+=`<div class="empty">沒有符合的學生</div>`;
+ if(sel){const n=sel.size;h+=`<div style="height:70px"></div><div class="selbar"><button class="del" onclick="bulkDelete()" ${n?'':'disabled'}>🗑 刪除</button><button onclick="bulkMoveClass()" ${n?'':'disabled'}>改班別</button><button onclick="bulkSubject(true)" ${n?'':'disabled'}>＋科目</button><button onclick="bulkSubject(false)" ${n?'':'disabled'}>－科目</button></div>`;}
+ return h;}
+/* ---- 批量操作 ---- */
+function toggleSel(){V.sel=V.sel?null:new Set();render();}
+function selToggle(id){if(V.sel.has(id))V.sel.delete(id);else V.sel.add(id);render();}
+function selAll(){if(!V.sel)return;const vis=V._visible||[];if(vis.every(id=>V.sel.has(id)))vis.forEach(id=>V.sel.delete(id));else vis.forEach(id=>V.sel.add(id));render();}
+function bulkDelete(){const ids=[...V.sel];if(!confirm(`確定刪除已選的 ${ids.length} 位學生？其功課紀錄亦會一併刪除。`))return;S.students=S.students.filter(s=>!V.sel.has(s.id));Object.values(S.records).forEach(r=>ids.forEach(id=>delete r[id]));V.sel=null;save();render();toast(`已刪除 ${ids.length} 人`);}
+function bulkMoveClass(){const cls=(prompt(`把已選的 ${V.sel.size} 位學生移至哪個班別？\n現有：${classes().join('、')}`)||'').trim().toUpperCase();if(!cls)return;S.students.forEach(s=>{if(V.sel.has(s.id))s.cls=cls;});V.sel=null;save();render();toast('已移至 '+cls);}
+function bulkSubject(add){const v=prompt(add?`為已選的 ${V.sel.size} 位學生加入科目（多個以逗號分隔）：`:`從已選的 ${V.sel.size} 位學生移除科目（多個以逗號分隔）：`);const subs=parseSubj(v);if(!subs.length)return;S.students.forEach(s=>{if(!V.sel.has(s.id))return;s.subjects=add?[...new Set([...(s.subjects||[]),...subs])]:(s.subjects||[]).filter(x=>!subs.includes(x));});V.sel=null;save();render();toast(add?'已加入科目':'已移除科目');}
+/* ---- 班別管理 ---- */
+function openClassMgr(){const cls=classes();sheet(`<h2>班別管理</h2>${cls.length?cls.map(c=>`<div class="row" style="border-bottom:1px solid var(--line);min-height:52px"><div class="grow"><div class="t">${esc(c)}</div><div class="s">${studentsOf(c).length} 人 · ${S.assignments.filter(a=>a.cls===c).length} 項功課</div></div><button class="mini" onclick="renameClass('${esc(c)}')">改名</button><button class="mini" style="color:var(--red)" onclick="deleteClass('${esc(c)}')">刪除整班</button></div>`).join(''):'<div class="empty">尚未有班別</div>'}<div class="hint" style="padding:10px 0 0">改名會同時更新該班所有學生及功課紀錄。</div>`);}
+function renameClass(old){const nw=(prompt(`把班別「${old}」改名為：`,old)||'').trim().toUpperCase();if(!nw||nw===old)return;if(classes().includes(nw)&&!confirm(`「${nw}」已存在，會把兩班合併，繼續？`))return;S.students.forEach(s=>{if(s.cls===old)s.cls=nw;});S.assignments.forEach(a=>{if(a.cls===old)a.cls=nw;});if(V.cls===old)V.cls=nw;if(V.hwCls===old)V.hwCls=nw;save();openClassMgr();render();toast(`已改名為 ${nw}`);}
+function deleteClass(c){const n=studentsOf(c).length,m=S.assignments.filter(a=>a.cls===c).length;if(!confirm(`確定刪除班別「${c}」？\n會刪除 ${n} 位學生及 ${m} 項功課紀錄，無法復原。`))return;const ids=new Set(studentsOf(c).map(s=>s.id));S.students=S.students.filter(s=>s.cls!==c);S.assignments=S.assignments.filter(a=>{if(a.cls===c){delete S.records[a.id];return false;}return true;});Object.values(S.records).forEach(r=>ids.forEach(id=>delete r[id]));if(V.cls===c)V.cls='all';if(V.hwCls===c)V.hwCls='all';save();openClassMgr();render();toast(`已刪除 ${c}`);}
+function searchStu(v){V.q=v;render();const el=document.getElementById('q');if(el){el.focus();const n=el.value.length;try{el.setSelectionRange(n,n);}catch(e){}}}
+function subjField(selected){const all=[...new Set([...subjectsAll(),...selected])];return `<label>科目（可多選）${all.length?`<div class="chips" id="f-subj-chips" style="padding:8px 0 0">${all.map(c=>`<button type="button" class="${selected.includes(c)?'on':''}" data-s="${esc(c)}" onclick="this.classList.toggle('on')">${esc(c)}</button>`).join('')}</div>`:''}<input id="f-subj-new" value="" placeholder="新增科目，多個以逗號分隔，例：中文, 數學"></label>`;}
+function collectSubj(){const chips=[...document.querySelectorAll('#f-subj-chips button.on')].map(b=>b.dataset.s);return [...new Set([...chips,...parseSubj(document.getElementById('f-subj-new').value)])];}
+function contactRow(c){return `<div class="crow"><input class="c-label" placeholder="備註（本人）" value="${esc(c.label||'')}"><input class="c-phone" inputmode="tel" placeholder="電話 91234567" value="${esc(c.phone||'')}"><button type="button" title="設為預設（移到最上）" onclick="const r=this.parentNode;if(r.previousElementSibling)r.parentNode.insertBefore(r,r.previousElementSibling)">↑</button><button type="button" onclick="this.parentNode.remove()">✕</button></div>`;}
+function contactsField(list){return `<label>學生 WhatsApp 電話（最上面的是預設；可加多個，例如本人、家長）</label><div id="f-contacts">${(list.length?list:[{}]).map(contactRow).join('')}</div><button class="mini" type="button" onclick="document.getElementById('f-contacts').insertAdjacentHTML('beforeend',contactRow({}))">＋ 新增電話</button>`;}
+function collectContacts(){return [...document.querySelectorAll('#f-contacts .crow')].map(r=>({label:r.querySelector('.c-label').value.trim(),phone:r.querySelector('.c-phone').value.trim()})).filter(c=>c.phone);}
+function setDefaultContact(sid,idx){const s=byId(S.students,sid);if(!s||!s.contacts[idx])return;const c=s.contacts.splice(idx,1)[0];s.contacts.unshift(c);syncPhone(s);save();render();toast(`已改用 ${contactLabel(c,0)} ${c.phone}`);}
+function openStudent(id){const s=id?byId(S.students,id):{cls:V.cls!=='all'?V.cls:'',no:'',name:'',phone:'',contacts:[],subjects:V.subj!=='all'?[V.subj]:[]};sheet(`<h2>${id?'編輯學生':'新增學生'}</h2><label>班別<input id="f-cls" list="clslist" value="${esc(s.cls)}" placeholder="例：1A"><datalist id="clslist">${classes().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label><label>學號<input id="f-no" inputmode="numeric" value="${esc(s.no)}"></label><label>姓名<input id="f-name" value="${esc(s.name)}"></label>${contactsField(s.contacts||[])}${subjField(s.subjects||[])}<button class="primary" onclick="saveStudent('${id||''}')">儲存</button>${id?`<button class="danger" onclick="delStudent('${id}')">刪除學生</button>`:''}`);if(!id)setTimeout(()=>document.getElementById(s.cls?'f-name':'f-cls').focus(),80);}
+function saveStudent(id){const g=k=>document.getElementById(k).value.trim();const cls=g('f-cls').toUpperCase(),name=g('f-name');if(!cls||!name){alert('請輸入班別及姓名');return;}const subjects=collectSubj(),contacts=collectContacts();let st;if(id){st=byId(S.students,id);Object.assign(st,{cls,no:g('f-no'),name,contacts,subjects});}else{st={id:uid(),cls,no:g('f-no'),name,contacts,subjects};S.students.push(st);}syncPhone(st);save();closeSheet();render();}
+function delStudent(id){if(!confirm('確定刪除此學生？其功課紀錄亦會一併刪除。'))return;S.students=S.students.filter(s=>s.id!==id);Object.values(S.records).forEach(r=>delete r[id]);save();closeSheet();render();}
+function openImport(){sheet(`<h2>批量貼上匯入</h2><div class="hint" style="padding:0 0 6px">可直接從 Excel 複製整欄貼上，每行一位學生。欄位順序不限，程式會自動辨認「班別、學號、姓名、電話」，例如：<br><code>1A, 1, 陳大文, 91234567</code><br><code>陳大文 91234567</code></div><label>預設班別（行內沒有班別時使用）<input id="f-cls" list="clslist" value="${esc(V.cls!=='all'?V.cls:'')}" placeholder="例：1A"><datalist id="clslist">${classes().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label><label>科目（選填，套用到這次匯入的全部學生，逗號分隔）<input id="f-subj" value="${esc(V.subj!=='all'?V.subj:'')}" placeholder="例：中文, 數學"></label><label>名單<textarea id="f-text" placeholder="1A&#9;1&#9;陳大文&#9;91234567&#10;1A&#9;2&#9;李小明&#9;98765432"></textarea></label><button class="primary" onclick="doImport()">匯入</button>`);}
+function parseOthers(v){return String(v==null?'':v).split(/[、,，;；|]+/).map(x=>x.trim()).filter(Boolean).map(x=>{const m=x.match(/^(.*?)[:：]\s*(.+)$/);return m?{label:m[1].trim(),phone:m[2].replace(/[\s\-()]/g,'').replace(/^\+/,'')}:{label:'',phone:x.replace(/[\s\-()]/g,'').replace(/^\+/,'')};}).filter(c=>/^\d{6,15}$/.test(c.phone));}
+function mergeStudent(x,defCls,defSubj){const cls=x.cls||defCls||'未分班';const subjects=[...new Set([...(x.subjects||[]),...(defSubj||[])])];const extra=(x.contacts||[]).filter(c=>c.phone);let ex=S.students.find(s=>s.cls===cls&&s.name===x.name);const isNew=!ex;if(isNew){ex={id:uid(),cls,no:'',name:x.name,contacts:[],subjects:[]};S.students.push(ex);}
+ if(x.no)ex.no=x.no;ex.contacts=ex.contacts||[];
+ if(x.phone){const p=x.phone;if(!ex.contacts.length)ex.contacts.push({label:'',phone:p});else if(ex.contacts[0].phone!==p){const i=ex.contacts.findIndex(c=>c.phone===p);if(i>0)ex.contacts.unshift(ex.contacts.splice(i,1)[0]);else ex.contacts[0].phone=p;}}
+ extra.forEach(c=>{if(!ex.contacts.some(k=>k.phone===c.phone))ex.contacts.push({label:c.label||'',phone:c.phone});else if(c.label){const k=ex.contacts.find(k=>k.phone===c.phone);if(!k.label)k.label=c.label;}});
+ ex.subjects=[...new Set([...(ex.subjects||[]),...subjects])];syncPhone(ex);return isNew?'added':'updated';}
+function parseLines(text,defCls){const out=[];text.split(/\r?\n/).forEach(line=>{line=line.trim();if(!line)return;let f=line.split(/\t|,|，|;|；|\|/).map(x=>x.trim()).filter(Boolean);if(f.length===1)f=line.split(/\s+/);let cls='',no='',name='',phone='';f.forEach(x=>{const d=x.replace(/[\s\-+()]/g,'');if(/^\d{8,15}$/.test(d)&&!phone)phone=d;else if(/^\d{1,3}$/.test(x)&&!no)no=x;else if(/^[0-9]{1,2}[A-Za-z]{1,2}$/.test(x)&&!cls)cls=x.toUpperCase();else if(!name)name=x;else if(!cls)cls=x;});if(!name)return;out.push({id:uid(),cls:cls||defCls||'未分班',no,name,phone});});return out;}
+function doImport(){const defCls=document.getElementById('f-cls').value.trim().toUpperCase();const defSubj=parseSubj(document.getElementById('f-subj').value);const list=parseLines(document.getElementById('f-text').value,defCls);if(!list.length){alert('未能辨認任何學生');return;}let added=0,updated=0;list.forEach(x=>{if(mergeStudent(x,defCls,defSubj)==='added')added++;else updated++;});save();closeSheet();render();toast(`新增 ${added} 人，更新 ${updated} 人`);}
+async function importFromSheet(){const url=S.settings.gasUrl;if(!url){alert('請先在「設定」輸入 Google Apps Script 網址');return;}toast('讀取中…');try{const r=await fetch(url+(url.includes('?')?'&':'?')+'action=students');const j=await r.json();if(!j.ok)throw new Error(j.error||'讀取失敗');const inc=j.students||[];if(!inc.length){alert('Google Sheet 的「學生名單」工作表沒有資料');return;}if(!confirm(`從 Google Sheet 讀到 ${inc.length} 位學生。\n會以「班別＋姓名」配對更新現有學生，並加入新學生。\n是否繼續？`))return;let added=0,updated=0;inc.forEach(x=>{const name=String(x.name||'').trim();if(!name)return;const r=mergeStudent({cls:String(x.cls||'').trim().toUpperCase(),no:String(x.no||''),name,phone:String(x.phone||'').replace(/[\s\-()]/g,'').replace(/^\+/,''),contacts:parseOthers(x.others),subjects:parseSubj(x.subjects)},'',[]);if(r==='added')added++;else updated++;});save();render();alert(`完成：新增 ${added} 人，更新 ${updated} 人`);}catch(e){alert('讀取失敗：'+e.message+'\n請檢查網址及部署設定（存取權限需設為「任何人」）');}}
+
+/* ---- Excel 匯入 ---- */
+const OUR_SHEETS=n=>n==='功課紀錄'||n==='學生名單'||n.indexOf('總覽-')===0;
+const COL_ALIAS={cls:['班別','班級','班','class'],no:['學號','座號','編號','號碼','號','no.','no','id'],name:['學生姓名','姓名','名字','學生','name','student'],phone:['學生電話','家長電話','家長whatsapp','whatsapp','聯絡電話','手提電話','手機','手提','電話','phone','mobile','tel'],others:['其他電話','其他聯絡','other'],subjects:['科目','選修','修讀','subjects','subject','elective']};
+function parseSheetRows(aoa){const rows=aoa.filter(r=>r.some(c=>String(c).trim()));if(!rows.length)return{students:[],hasHeader:false};
+ let hi=-1,map={},phoneCols=[],hdr=[];for(let i=0;i<Math.min(5,rows.length)&&hi<0;i++){const cells=rows[i].map(c=>String(c).trim().toLowerCase());const m={};Object.keys(COL_ALIAS).forEach(k=>{cells.forEach((c,j)=>{if(m[k]==null&&c&&COL_ALIAS[k].some(a=>c===a||c.includes(a)))m[k]=j;});});if(m.name!=null){hi=i;map=m;hdr=rows[i].map(c=>String(c).trim());
+  // 所有似電話的欄：第一個為預設，其餘成為額外聯絡（以標題作稱呼，例如「父親電話」）
+  cells.forEach((c,j)=>{if(j!==m.others&&c&&COL_ALIAS.phone.some(a=>c.includes(a)))phoneCols.push(j);});if(m.phone!=null){phoneCols=[m.phone,...phoneCols.filter(j=>j!==m.phone)];}}}
+ const clean=v=>String(v==null?'':v).replace(/\.0$/,'').trim();
+ if(hi<0){const text=rows.map(r=>r.map(clean).join('\t')).join('\n');return{students:parseLines(text,'').map(s=>({cls:s.cls==='未分班'?'':s.cls,no:s.no,name:s.name,phone:s.phone,subjects:[]})),hasHeader:false};}
+ const g=(r,k)=>map[k]==null?'':clean(r[map[k]]);
+ const cp=v=>clean(v).replace(/[\s\-()]/g,'').replace(/^\+/,'');
+ const students=rows.slice(hi+1).map(r=>{const extras=phoneCols.slice(1).map(j=>({label:hdr[j].replace(/電話|whatsapp|手提|手機|phone|mobile|tel/ig,'').trim(),phone:cp(r[j])})).filter(c=>c.phone);return{cls:g(r,'cls').toUpperCase(),no:g(r,'no'),name:g(r,'name'),phone:cp(r[phoneCols[0]]),contacts:[...extras,...parseOthers(g(r,'others'))],subjects:parseSubj(g(r,'subjects'))};}).filter(s=>s.name);
+ return{students,hasHeader:true,hasCls:map.cls!=null,hasSubj:map.subjects!=null};}
+let xlsPick=null;
+function importExcelFile(inp){const f=inp.files[0];inp.value='';if(!f)return;if(!window.XLSX){alert('Excel 元件尚未載入，請確認網絡連線後重新開啟 App');return;}const rd=new FileReader();rd.onload=()=>{try{const wb=XLSX.read(rd.result,{type:'array'});const sheets=wb.SheetNames.map(n=>{const aoa=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:'',raw:true});return{name:n,aoa,parsed:parseSheetRows(aoa)};});xlsPick={file:f.name,sheets};const best=sheets.filter(s=>!OUR_SHEETS(s.name)).sort((a,b)=>b.parsed.students.length-a.parsed.students.length)[0]||sheets[0];showExcelPicker(sheets.indexOf(best));}catch(e){alert('無法讀取檔案：'+e.message);}};rd.readAsArrayBuffer(f);}
+function showExcelPicker(idx){const p=xlsPick,sh=p.sheets[idx],st=sh.parsed.students;const withPhone=st.filter(s=>s.phone).length;
+ sheet(`<h2>從 Excel 匯入</h2><div class="hint" style="padding:0 0 6px">${esc(p.file)}</div><label>工作表<select id="f-sheet" onchange="showExcelPicker(+this.value)">${p.sheets.map((s,i)=>`<option value="${i}" ${i===idx?'selected':''}>${esc(s.name)}（辨認到 ${s.parsed.students.length} 人）</option>`).join('')}</select></label>
+ <div class="hint" style="padding:6px 0">${st.length?`辨認到 <b>${st.length}</b> 位學生，其中 ${withPhone} 人有電話。<br>例：${st.slice(0,3).map(s=>esc((s.cls?s.cls+' ':'')+s.name+(s.phone?' '+s.phone:''))).join('、')}`:'此工作表未能辨認學生。請確保第一行有「姓名」「電話」等標題。'}</div>
+ ${sh.parsed.hasCls?'':`<label>班別（此工作表沒有班別欄）<input id="f-cls" list="clslist" value="${esc(V.cls!=='all'?V.cls:'')}" placeholder="例：1A"><datalist id="clslist">${classes().map(c=>`<option value="${esc(c)}">`).join('')}</datalist></label>`}
+ ${sh.parsed.hasSubj?'':`<label>科目（此工作表沒有科目欄；選填，套用到全部匯入學生）<input id="f-subj" value="${esc(V.subj!=='all'?V.subj:'')}" placeholder="例：中文, 數學"></label>`}
+ <label class="switch"><span>連結此 Excel<br><small style="color:var(--sub)">匯出時會保留檔內其他工作表，並以相同檔名輸出</small></span><input id="f-keep" type="checkbox" checked></label>
+ <button class="primary" onclick="doExcelImport(${idx})" ${st.length?'':'disabled'}>匯入 ${st.length} 位學生</button>`);}
+function doExcelImport(idx){const p=xlsPick,sh=p.sheets[idx];const defCls=(document.getElementById('f-cls')||{value:''}).value.trim().toUpperCase();const defSubj=parseSubj((document.getElementById('f-subj')||{value:''}).value);let added=0,updated=0;
+ sh.parsed.students.forEach(x=>{if(mergeStudent(x,defCls,defSubj)==='added')added++;else updated++;});
+ if(document.getElementById('f-keep').checked){const base={name:p.file.replace(/\.(xls|xlsm|csv)$/i,'.xlsx'),sheets:p.sheets.filter(s=>!OUR_SHEETS(s.name)).map(s=>({name:s.name,aoa:s.aoa}))};if(JSON.stringify(base).length>1500000){toast('Excel 太大，只匯入名單，不保留其他工作表');S.excelBase=null;}else S.excelBase=base;}
+ save();closeSheet();render();toast(`新增 ${added} 人，更新 ${updated} 人`);}
+function unlinkExcel(){if(!confirm('取消連結 Excel？之後匯出只會包含 App 產生的工作表。'))return;S.excelBase=null;save();render();}
+function downloadTemplate(){if(!window.XLSX){alert('Excel 元件尚未載入');return;}const wb=XLSX.utils.book_new();const ws=XLSX.utils.aoa_to_sheet([['班別','學號','姓名','電話','科目','其他電話'],['1A','1','陳大文','91234567','中文, 數學','爸爸:98761234'],['1A','2','李小明','98765432','中文','']]);ws['!cols']=[{wch:8},{wch:8},{wch:14},{wch:14},{wch:18},{wch:24}];XLSX.utils.book_append_sheet(wb,ws,'學生名單');const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),'學生名單範本.xlsx');}
+
+/* ===================== 匯出 / 同步 ===================== */
+const REC_HEADER=['日期','班別','科目','功課','學號','姓名','電話','狀態','提醒時間','更新時間'];
+const recRow=r=>[r.date,r.cls,r.subject,r.title,r.no,r.name,r.phone,r.status,r.remindedAt,r.updatedAt];
+const STU_HEADER=['班別','學號','姓名','電話','科目','其他電話'];
+const othersStr=s=>(s.contacts||[]).slice(1).map((c,i)=>(c.label?c.label+':':'')+c.phone).join('、');
+function buildData(){const sortedA=S.assignments.slice().sort((a,b)=>a.date.localeCompare(b.date)||(a.created||0)-(b.created||0));const records=[];sortedA.forEach(a=>roster(a).forEach(s=>{const r=recOf(a.id,s.id);records.push({date:a.date,cls:a.cls,subject:a.subject||'',title:a.title,no:s.no||'',name:s.name,phone:s.phone||'',status:LABEL[r.status||'missing'],remindedAt:r.remindedAt||'',updatedAt:r.updatedAt||''});}));
+ const matrices=classes().map(cls=>{const as=sortedA.filter(a=>a.cls===cls);const header=['學號','姓名','科目',...as.map(a=>a.date.slice(5)+' '+(a.subject?a.subject+' ':'')+a.title),'未交次數','遲交次數'];const rows=studentsOf(cls).map(s=>{let m=0,l=0;const cells=as.map(a=>{if(!hasSubj(s,a.subject))return '—';const st=statusOf(a.id,s.id);if(st==='missing')m++;if(st==='late')l++;return {done:'✓',late:'遲',missing:'✗'}[st];});return [s.no||'',s.name,(s.subjects||[]).join('、'),...cells,m,l];});return{cls,header,rows};});
+ const students=S.students.slice().sort(sortStu).map(s=>({cls:s.cls,no:s.no||'',name:s.name,phone:s.phone||'',subjects:(s.subjects||[]).join('、'),others:othersStr(s)}));
+ return{teacher:S.settings.teacher,exportedAt:nowStr(),students,records,matrices};}
+async function deliver(blob,name){try{const file=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:name});return;}}catch(e){if(e&&e.name==='AbortError')return;}const u=URL.createObjectURL(blob);const a=document.createElement('a');a.href=u;a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u);},3000);}
+function exportXLSX(){if(!window.XLSX){alert('Excel 元件尚未載入，請確認網絡連線後重新開啟 App');return;}const d=buildData();const wb=XLSX.utils.book_new();if(S.excelBase)S.excelBase.sheets.forEach(s=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(s.aoa),s.name.slice(0,31)));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([REC_HEADER,...d.records.map(recRow)]),'功課紀錄');d.matrices.forEach(m=>XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([m.header,...m.rows]),('總覽-'+m.cls).replace(/[\[\]:*?\/\\]/g,'').slice(0,31)));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([STU_HEADER,...d.students.map(s=>[s.cls,s.no,s.name,s.phone,s.subjects,s.others])]),'學生名單');const buf=XLSX.write(wb,{bookType:'xlsx',type:'array'});deliver(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),S.excelBase?S.excelBase.name:'功課紀錄_'+today()+'.xlsx');}
+function exportCSV(){const d=buildData();const csv=String.fromCharCode(0xFEFF)+[REC_HEADER,...d.records.map(recRow)].map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\r\n');deliver(new Blob([csv],{type:'text/csv;charset=utf-8'}),'功課紀錄_'+today()+'.csv');}
+/* ---- 雲端（多裝置）同步 ---- */
+// 版本規則：本機每次修改 rev+1；雲端每次寫入由伺服器分配 ver（單調遞增，不依賴各裝置時鐘）。
+// 未上傳修改 = rev > syncedRev；雲端較新 = 雲端 ver > 本機 cloudVer。
+const stateOf=()=>({students:S.students,assignments:S.assignments,records:S.records,excelBase:S.excelBase||null});
+const isDirty=()=>(S.meta.rev||0)>(S.settings.syncedRev||0);
+const fmtTs=t=>{const d=new Date(t);return pad2(d.getMonth()+1)+'/'+pad2(d.getDate())+' '+pad2(d.getHours())+':'+pad2(d.getMinutes());};
+function applyRemote(st){S.students=st.students||[];S.assignments=st.assignments||[];S.records=st.records||{};S.excelBase=st.excelBase||null;S.students.forEach(x=>{if(!Array.isArray(x.subjects))x.subjects=[];});S.settings.cloudVer=st.ver||0;S.settings.syncedRev=S.meta.rev||0;S.settings.lastSync=nowStr();persist();if(V.page&&!byId(S.assignments,V.id))V.page=null;render();}
+function resolveConflict(remote){const ok=confirm(`雲端有另一部裝置在 ${remote.savedAt||'較早前'} 上傳的資料，而本機亦有未上傳的修改（${S.meta.editedAt?fmtTs(S.meta.editedAt):''}）。\n\n按「確定」：以雲端資料取代本機\n按「取消」：保留本機資料並覆蓋雲端`);if(ok){applyRemote(remote);toast('已載入雲端資料');}else syncSheet(false,true);}
+let syncing=false,autoT=null,pulling=false,lastPull=0;
+async function syncSheet(quiet,force){const url=S.settings.gasUrl;if(!url){if(!quiet)alert('請先在「設定」輸入 Google Apps Script 網址');return;}if(syncing){if(!quiet)toast('同步進行中…');return;}syncing=true;const btn=document.getElementById('syncBtn');if(btn){btn.disabled=true;btn.firstChild.textContent='☁️ 同步中…';}
+ let conflict=null;const pushedRev=S.meta.rev||0;
+ try{const payload=Object.assign(buildData(),{state:stateOf(),base:S.settings.cloudVer||0,force:!!force});const r=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});const j=await r.json();if(j.conflict){conflict=j.state;}else{if(!j.ok)throw new Error(j.error||'失敗');S.settings.syncedRev=pushedRev;if(j.ver)S.settings.cloudVer=j.ver;S.settings.lastSync=nowStr();persist();toast('已同步至 Google Sheet ✓');}}
+ catch(e){if(quiet)toast('自動同步失敗，稍後會再試');else alert('同步失敗：'+e.message+'\n\n請檢查：\n1. 網址是否為 Apps Script「網頁應用程式」網址（以 /exec 結尾）\n2. 部署時「執行身份」選「我」、「誰可以存取」選「任何人」\n3. 修改過 Code.gs 後有否重新部署「新版本」');}
+ finally{syncing=false;if(V.tab==='export'&&!V.page)render();}
+ if(conflict)resolveConflict(conflict);}
+function scheduleAutoSync(){if(!S.settings.autoSync||!S.settings.gasUrl)return;clearTimeout(autoT);autoT=setTimeout(()=>syncSheet(true),4000);}
+async function pullCloud(manual){const url=S.settings.gasUrl;if(!url||pulling)return;if(!manual&&Date.now()-lastPull<30000)return;pulling=true;lastPull=Date.now();if(manual)toast('正在檢查雲端…');
+ try{const r=await fetch(url+(url.includes('?')?'&':'?')+'action=state&_='+Date.now());const j=await r.json();if(!j.ok)throw new Error(j.error||'失敗');const remote=j.state;
+  if(!remote||!remote.ver){if(manual)toast('雲端尚未有資料，請先按「立即同步」上傳');if(isDirty())scheduleAutoSync();return;}
+  if(remote.ver<=(S.settings.cloudVer||0)){if(manual)toast(isDirty()?'雲端沒有新資料，正在上傳本機修改':'已是最新');if(isDirty())scheduleAutoSync();return;}
+  if(!isDirty()){applyRemote(remote);toast('已從雲端載入最新資料');}else resolveConflict(remote);}
+ catch(e){if(manual)alert('載入失敗：'+e.message);}
+ finally{pulling=false;}}
+function viewExport(){const s=S.settings;let h=header('匯出 / 同步');
+ h+=`<div class="sec">Excel</div><div class="card list"><button class="item" onclick="exportXLSX()">📊 匯出 Excel（.xlsx）<span class="s">包含：功課紀錄、每班總覽表、學生名單</span></button><button class="item" onclick="exportCSV()">📄 匯出 CSV<span class="s">只含功課紀錄，可用任何試算表開啟</span></button></div><div class="hint">iPhone 上會彈出分享面板，可儲存到「檔案」（OneDrive / iCloud）、AirDrop 到電腦、或以電郵 / WhatsApp 傳送。${S.excelBase?`<br><br>已連結 Excel <b>${esc(S.excelBase.name)}</b>：匯出會以相同檔名輸出，並保留檔內原有工作表（${S.excelBase.sheets.map(x=>esc(x.name)).join('、')||'無'}），再加上功課紀錄。儲存到「檔案」時選同一位置「取代」即可更新。 <button class="mini" style="padding:0" onclick="unlinkExcel()">取消連結</button>`:''}</div>`;
+ h+=`<div class="sec">Google Sheet</div><div class="card list"><button class="item" id="syncBtn" onclick="syncSheet()" ${s.gasUrl?'':'disabled'}><span>☁️ 立即同步至 Google Sheet</span><span class="s">${s.gasUrl?(s.lastSync?'上次同步：'+esc(s.lastSync):'尚未同步過'):'請先在「設定」輸入 Apps Script 網址'}</span></button><button class="item" onclick="pullCloud(true)" ${s.gasUrl?'':'disabled'}>⬇️ 從雲端載入最新資料<span class="s">${s.gasUrl?(isDirty()?'⚠️ 本機有未上傳的修改':'✓ 本機與雲端一致'):'用於多部裝置之間同步'}</span></button>${s.sheetUrl?`<a class="item" href="${esc(s.sheetUrl)}" target="_blank" rel="noopener">🔗 開啟 Google Sheet</a>`:''}</div><div class="hint">同步會把「功課紀錄」「總覽-班別」「學生名單」三個工作表整個覆寫成 App 內的最新資料，並把 App 全部資料存到雲端；其他裝置開啟 App 時會自動載入。${s.autoSync?'已開啟自動同步：每次修改後約 4 秒自動上傳。':'⚠️ 自動同步已關閉，多裝置使用請在「設定」開啟。'}</div>`;
+ h+=`<div class="sec">備份</div><div class="card list"><button class="item" onclick="backup()">💾 匯出備份檔（.json）<span class="s">換手機或重裝時用來還原全部資料</span></button><label class="item" style="cursor:pointer">📂 從備份檔還原<input type="file" accept=".json,application/json" hidden onchange="restore(this)"></label></div>`;
+ return h;}
+function backup(){deliver(new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),'交功課備份_'+today()+'.json');}
+function restore(inp){const f=inp.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const d=JSON.parse(rd.result);if(!Array.isArray(d.students))throw 0;if(!confirm(`備份含 ${d.students.length} 位學生、${(d.assignments||[]).length} 項功課。\n還原會覆蓋目前所有資料，確定？`))return;const keep=S.settings;localStorage.setItem(KEY,JSON.stringify(d));S=load();S.settings=Object.assign({},keep,{syncedRev:0});save();render();toast('已還原');}catch(e){alert('備份檔格式不正確');}};rd.readAsText(f);}
+
+/* ===================== 設定 ===================== */
+function setS(k,v){S.settings[k]=v;localStorage.setItem(KEY,JSON.stringify(S));}
+function viewSettings(){const s=S.settings;let h=header('設定');
+ h+=`<div class="sec">基本</div><div class="card form"><label>老師姓名（用於訊息簽名）<input value="${esc(s.teacher)}" onchange="setS('teacher',this.value.trim())" placeholder="例：陳"></label><label>電話國家區號（8 位以下號碼會自動加上）<input inputmode="numeric" value="${esc(s.cc)}" onchange="setS('cc',this.value.replace(/\\D/g,''))" placeholder="852"></label></div>`;
+ h+=`<div class="sec">WhatsApp 訊息範本</div><div class="card form"><label>可用變數：<code>{姓名}</code> <code>{班別}</code> <code>{學號}</code> <code>{科目}</code> <code>{功課}</code> <code>{日期}</code> <code>{老師}</code><textarea onchange="setS('template',this.value)">${esc(s.template)}</textarea></label><label>第二次及之後提醒的範本<textarea onchange="setS('template2',this.value)">${esc(s.template2||DEFAULT_TEMPLATE2)}</textarea></label><label>通知家長的範本（傳給備註為「家長」的電話）<textarea onchange="setS('templateParent',this.value)">${esc(s.templateParent||DEFAULT_TEMPLATE_P)}</textarea></label><button class="mini" onclick="setS('template',DEFAULT_TEMPLATE);setS('template2',DEFAULT_TEMPLATE2);setS('templateParent',DEFAULT_TEMPLATE_P);render()">還原全部預設範本</button><label>累計未交警示門檻（次）<input inputmode="numeric" value="${esc(s.alertMissing||3)}" onchange="setS('alertMissing',Math.max(1,+this.value||3))"></label>${isIOS?`<label class="switch"><span>以 wa.me 網頁連結開啟<br><small style="color:var(--sub)">若按追收後無法開啟 WhatsApp，請開啟此項</small></span><input type="checkbox" ${s.waMode==='web'?'checked':''} onchange="setS('waMode',this.checked?'web':'app')"></label>`:''}</div>`;
+ h+=`<div class="sec">Google Sheet 同步</div><div class="card form"><label>Apps Script 網頁應用程式網址<input value="${esc(s.gasUrl)}" onchange="setS('gasUrl',this.value.trim())" placeholder="https://script.google.com/macros/s/…/exec" inputmode="url" autocapitalize="off"></label><label>Google Sheet 網址（選填，方便一鍵開啟）<input value="${esc(s.sheetUrl)}" onchange="setS('sheetUrl',this.value.trim())" placeholder="https://docs.google.com/spreadsheets/d/…" inputmode="url" autocapitalize="off"></label><label class="switch"><span>自動同步<br><small style="color:var(--sub)">每次修改後自動上傳；多部裝置共用必須開啟</small></span><input type="checkbox" ${s.autoSync?'checked':''} onchange="setS('autoSync',this.checked)"></label><button class="mini" onclick="testConn()">測試連線</button><button class="mini" onclick="syncSheet()">立即同步</button><div class="s" id="connRes" style="font-size:13px;color:var(--sub);padding:4px 0"></div></div>`;
+ h+=`<div class="sec">首次設定精靈（每位老師各自一份 Google Sheet）</div><div class="card list"><div class="item">① 準備 Google Sheet<span class="s">A. 同事已分享範本 Sheet 給你：開啟 → 檔案 → 建立副本（程式碼已在副本內）<br>B. 自己新建：sheets.google.com 新增空白 Sheet → 擴充功能 → Apps Script → 刪除原有內容 → 貼上 Code.gs → 儲存 <button class="mini" style="padding:0 4px" onclick="copyCodeGs()">複製 Code.gs</button></span></div><div class="item">② 部署<span class="s">Apps Script 右上「部署」→ 新增部署作業 → 類型「網頁應用程式」→ 執行身份「我」、誰可以存取「任何人」→ 部署 → 授權（進階 → 前往 → 允許）</span></div><div class="item">③ 貼上網址<span class="s">複製以 /exec 結尾的網址，貼到上面「Apps Script 網頁應用程式網址」，然後按「測試連線」。成功後其他裝置貼同一條網址即可同步。</span></div><div class="item">④ （選用）定時電郵摘要及自動備份<span class="s">在 Apps Script 編輯器上方選擇函數「setupTriggers」→ 執行 → 授權。之後每朝 8 時收到未交名單電郵、每週五收到欠交統計、每日自動備份到 Google Drive。</span></div></div><div class="hint">多裝置使用：每部裝置貼同一條網址並開啟自動同步。若兩部裝置都在離線時改過，會提示你選擇保留哪一份。Apps Script 網址等於這份資料的鑰匙，請勿公開。</div>`;
+ h+=`<div class="sec">資料</div><div class="card list"><button class="item" onclick="loadDemo()">🧪 載入示範資料<span class="s">用來試玩，會加入一班示範學生</span></button><button class="item" style="color:var(--red)" onclick="clearAll()">🗑 清除全部資料</button></div><div class="hint">資料只儲存在本機瀏覽器內，請定期在「匯出」頁做備份或同步至 Google Sheet。</div>`;
+ return h;}
+function loadDemo(){if(S.students.length&&!confirm('會在現有名單加入示範班別 6D，繼續？'))return;const names=['陳大文','李小明','張美儀','黃子軒','林嘉欣','何俊傑','吳詩雅','鄭家豪','梁曉彤','周梓軒'];const ids=names.map((n,i)=>{const p=i<8?'9'+String(1000000+i*1234567).slice(0,7):'';const s={id:uid(),cls:'6D',no:String(i+1),name:n,phone:p,contacts:p?[{label:'本人',phone:p}]:[],subjects:i%3===2?['中文']:['中文','數學']};if(i===1)s.contacts.push({label:'家長',phone:'98765432'});S.students.push(s);return s.id;});const a={id:uid(),cls:'6D',subject:'中文',title:'中文作業 第3課',date:today(),due:'',created:Date.now()};S.assignments.push(a);S.records[a.id]={};ids.forEach((id,i)=>S.records[a.id][id]={status:i%4===1?'missing':i===6?'late':'done',updatedAt:nowStr()});const d2=new Date();d2.setDate(d2.getDate()+3);const a2={id:uid(),cls:'6D',subject:'數學',title:'數學工作紙 P.12',date:today(),due:d2.getFullYear()+'-'+pad2(d2.getMonth()+1)+'-'+pad2(d2.getDate()),created:Date.now()+1};S.assignments.push(a2);S.records[a2.id]={};save();go({tab:'hw',page:null,hwCls:'all'});toast('已載入示範資料');}
+function clearAll(){if(!confirm('確定清除本機全部學生、功課及紀錄？此動作無法復原。'))return;if(!confirm('再次確認：真的要清除？'))return;const keep=S.settings;let cloud=false;if(keep.gasUrl)cloud=confirm('亦要清除 Google Sheet 雲端的資料？\n\n「確定」＝ 本機及雲端一併清除（其他裝置亦會被清空）\n「取消」＝ 只清除本機，重新開啟 App 時會從雲端載回');S=blank();S.settings=Object.assign({},keep,{syncedRev:0,cloudVer:0,lastSync:''});if(cloud){S.meta.rev=1;S.meta.editedAt=Date.now();persist();syncSheet(false,true);}else persist();go({tab:'hw',page:null,cls:'all',hwCls:'all',subj:'all',hwSubj:'all'});}
+
+render();
+if(S.settings.gasUrl)pullCloud(false);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.settings.gasUrl)pullCloud(false);});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>

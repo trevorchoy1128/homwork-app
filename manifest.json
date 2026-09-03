@@ -1,0 +1,11 @@
+{
+  "name": "交功課紀錄",
+  "short_name": "交功課",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f2f2f7",
+  "theme_color": "#0a84ff",
+  "lang": "zh-Hant",
+  "icons": [{ "src": "icon.png", "sizes": "180x180", "type": "image/png" }]
+}
