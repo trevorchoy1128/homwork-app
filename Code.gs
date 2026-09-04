@@ -66,7 +66,7 @@ function doPost(e) {
     writeMatrices(ss, data.matrices || []);
     writeStudents(ss, data.students || []);
     var sheet = ss.getSheetByName(SHEET_RECORDS);
-    sheet.getRange('L1').setValue('最後同步：' + (data.exportedAt || new Date()) + (data.teacher ? '（' + data.teacher + '老師）' : ''));
+    sheet.getRange('N1').setValue('最後同步：' + (data.exportedAt || new Date()) + (data.teacher ? '（' + data.teacher + '老師）' : ''));
     return json({ ok: true, rows: (data.records || []).length, ver: ver });
   } catch (err) {
     return json({ ok: false, error: String(err) });
@@ -117,18 +117,21 @@ function fill(sheet, header, rows) {
 }
 
 function writeRecords(ss, records) {
-  var header = ['日期', '班別', '科目', '功課', '學號', '姓名', '電話', '狀態', '提醒時間', '更新時間'];
+  var header = ['日期', '班別', '科目', '類別', '項目', '學號', '姓名', '電話', '狀態', '提醒次數', '提醒時間', '更新時間'];
   var rows = records.map(function (r) {
-    return [r.date, r.cls, r.subject || '', r.title, r.no, r.name, r.phone, r.status, r.remindedAt, r.updatedAt];
+    return [r.date, r.cls, r.subject || '', r.tag || '功課', r.title, r.no, r.name, r.phone, r.status, r.reminds || '', r.remindedAt, r.updatedAt];
   });
   var sheet = getOrCreate(ss, SHEET_RECORDS);
   fill(sheet, header, rows);
-  // 未交紅色、遲交橙色
-  var col = sheet.getRange('H:H');
-  sheet.setConditionalFormatRules([
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('未交').setBackground('#fde2e1').setFontColor('#c5221f').setRanges([col]).build(),
-    SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo('遲交').setBackground('#fff0d6').setFontColor('#b06000').setRanges([col]).build()
-  ]);
+  // 未完成紅色、補交橙色（各類別字眼）
+  var col = sheet.getRange('I:I'), rules = [];
+  ['未交', '欠帶', '未測', '未默', '未完成'].forEach(function (w) {
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(w).setBackground('#fde2e1').setFontColor('#c5221f').setRanges([col]).build());
+  });
+  ['補交', '遲交', '補帶', '補測', '補默', '補做'].forEach(function (w) {
+    rules.push(SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(w).setBackground('#fff0d6').setFontColor('#b06000').setRanges([col]).build());
+  });
+  sheet.setConditionalFormatRules(rules);
 }
 
 function writeMatrices(ss, matrices) {
@@ -185,7 +188,7 @@ function rosterOf(st, a) {
 }
 function recOfA(st, a, s) { return ((st.records || {})[a.id] || {})[s.id] || {}; }
 function statusOfA(st, a, s) { return recOfA(st, a, s).status || 'missing'; }
-function label(a) { return a.cls + (a.subject ? ' ' + a.subject : '') + '「' + a.title + '」（' + a.date + (a.due ? '，收簿日 ' + a.due : '') + '）'; }
+function label(a) { return a.cls + (a.subject ? ' ' + a.subject : '') + ' ' + (a.tag || '功課') + '「' + a.title + '」（' + a.date + (a.due ? '，收簿日 ' + a.due : '') + '）'; }
 
 // 所有未交（不含未到收簿日的功課）
 function outstanding(st) {
