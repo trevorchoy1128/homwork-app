@@ -184,11 +184,14 @@ function ownerEmail() { return Session.getEffectiveUser().getEmail(); }
 function byNo(a, b) { return ((+a.no || 999) - (+b.no || 999)) || String(a.name).localeCompare(String(b.name)); }
 function isPendingA(a) { return !!a.due && a.due > todayStr(); }
 function rosterOf(st, a) {
-  return (st.students || []).filter(function (s) { return s.cls === a.cls && (!a.subject || (s.subjects || []).indexOf(a.subject) >= 0); }).sort(byNo);
+  var cls = classesOf(a);
+  return (st.students || []).filter(function (s) { return cls.indexOf(s.cls) >= 0 && (!a.subject || (s.subjects || []).indexOf(a.subject) >= 0); })
+    .sort(function (x, y) { return (cls.indexOf(x.cls) - cls.indexOf(y.cls)) || byNo(x, y); });
 }
+function classesOf(a) { return (a.classes && a.classes.length) ? a.classes : [a.cls]; }
 function recOfA(st, a, s) { return ((st.records || {})[a.id] || {})[s.id] || {}; }
 function statusOfA(st, a, s) { return recOfA(st, a, s).status || 'missing'; }
-function label(a) { return a.cls + (a.subject ? ' ' + a.subject : '') + ' ' + (a.tag || '功課') + '「' + a.title + '」（' + a.date + (a.due ? '，收簿日 ' + a.due : '') + '）'; }
+function label(a) { return classesOf(a).join('/') + (a.subject ? ' ' + a.subject : '') + ' ' + (a.tag || '功課') + '「' + a.title + '」（' + a.date + (a.due ? '，收簿日 ' + a.due : '') + '）'; }
 
 // 所有未交（不含未到收簿日的功課）
 function outstanding(st) {
@@ -211,7 +214,7 @@ function dailySummary() {
     html += '<h3 style="margin:16px 0 4px">' + label(it.a) + ' — ' + it.miss.length + ' 人未交</h3><ul style="margin:0">';
     it.miss.forEach(function (s) {
       var r = recOfA(st, it.a, s), n = (r.reminds || []).length;
-      html += '<li>' + (s.no ? s.no + '. ' : '') + s.name + (n ? ' <span style="color:#888">（已提醒 ' + n + ' 次）</span>' : '') + '</li>';
+      html += '<li>' + (classesOf(it.a).length > 1 ? s.cls + ' ' : '') + (s.no ? s.no + '. ' : '') + s.name + (n ? ' <span style="color:#888">（已提醒 ' + n + ' 次）</span>' : '') + '</li>';
     });
     html += '</ul>';
   });
@@ -233,7 +236,7 @@ function weeklySummary() {
     var rows = classes[cls].sort(byNo).map(function (s) {
       var wm = 0, wl = 0, tm = 0, tl = 0;
       (st.assignments || []).forEach(function (a) {
-        if (a.cls !== s.cls || isPendingA(a) || (a.subject && (s.subjects || []).indexOf(a.subject) < 0)) return;
+        if (classesOf(a).indexOf(s.cls) < 0 || isPendingA(a) || (a.subject && (s.subjects || []).indexOf(a.subject) < 0)) return;
         var stt = statusOfA(st, a, s), inWeek = a.date >= from && a.date <= to;
         if (stt === 'missing') { tm++; if (inWeek) wm++; }
         if (stt === 'late') { tl++; if (inWeek) wl++; }
