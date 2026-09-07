@@ -1,4 +1,4 @@
-const C = 'hw-tracker-v1';
+const C = 'hw-tracker-v1.9.0';
 const ASSETS = ['./', './index.html', './manifest.json', './icon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(C).then(c => c.addAll(ASSETS)).catch(() => {})); self.skipWaiting(); });
