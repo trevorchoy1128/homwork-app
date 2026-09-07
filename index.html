@@ -47,6 +47,8 @@ header .hright{min-width:64px;text-align:right}
 .stu.done{border-left:4px solid var(--green)}
 .stu.late{border-left:4px solid var(--orange)}
 .stu{transition:transform .08s}
+.lp{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.lp.pressing{transform:scale(.97);opacity:.8;transition:transform .15s,opacity .15s}
 .stu:active{transform:scale(.985)}
 .stats{display:flex;justify-content:space-around;text-align:center;padding:14px 8px}
 .stats b{display:block;font-size:24px}
@@ -224,8 +226,9 @@ function viewHW(){const cls=classes();let list=S.assignments.slice().sort((a,b)=
  let h=header('紀錄',null,`<button class="plus" onclick="openNewHW()">＋</button>`)+chips(subjectsAll(),V.hwSubj,'hwSubj')+chips(clsList,V.hwCls,'hwCls')+chips(S.tags.map(t=>t.name),V.hwTag||'all','hwTag');
  if(S.assignments.length){const ov=overview(today()),ovAll=overview(null);h+=`<div class="card row" onclick="go({page:'today',ovMode:'today'})"><div class="grow"><div class="t">📋 追收總覽</div><div class="s">今日 ${ov.count} 人次 · 累計 ${ovAll.count} 人次未完成（功課、用品、測驗、默書）</div></div>${ovAll.count?`<span class="badge red">${ov.count}/${ovAll.count}</span>`:`<span class="badge green">全部完成</span>`}<span class="chev">›</span></div>`;
   h+=`<div class="seg">${[['all','全部'],['today','今日'],['week','本週']].map(([k,l])=>`<button class="${(V.period||'all')===k?'on':''}" onclick="go({period:'${k}'})">${l}</button>`).join('')}</div>`;}
+ if(list.length)h+=`<div class="hint" style="padding-top:2px">長按紀錄可開啟選單（編輯、追收、全部標為已交、刪除）</div>`;
  if(!S.students.length)h+=`<div class="empty">請先到「學生」頁加入學生名單，<br>再回來新增功課。</div>`;else if(!list.length)h+=`<div class="empty">${S.assignments.length?'此範圍沒有功課':'尚未有功課紀錄<br>按右上角「＋」新增'}</div>`;
- let last='';list.forEach(a=>{const st=stats(a),pend=isPending(a);if(a.date!==last){h+=`<div class="sec">${esc(fmtDate(a.date))}</div>`;last=a.date;}const L=labelsOf(a);h+=`<div class="card row" onclick="go({page:'detail',id:'${a.id}',filter:'all'})"><div class="grow"><div class="t">${tagIcon(a)}${esc(a.title)}</div><div class="s">${esc(clsLabel(a))}${a.subject?' · '+esc(a.subject):''} · ${L.done} ${st.done+st.late}/${st.total}${st.late?` · ${L.late} ${st.late}`:''}${a.due?` · 收簿日 ${esc(fmtMD(a.due))}`:''}</div></div>${pend?`<span class="badge" style="background:rgba(10,132,255,.12);color:var(--blue)">尚未收</span>`:st.missing?`<span class="badge red">${st.missing} 人${L.missing}</span>`:`<span class="badge green">全部${L.done}</span>`}<span class="chev">›</span></div>`;});
+ let last='';list.forEach(a=>{const st=stats(a),pend=isPending(a);if(a.date!==last){h+=`<div class="sec">${esc(fmtDate(a.date))}</div>`;last=a.date;}const L=labelsOf(a);h+=`<div class="card row lp" data-aid="${a.id}" onclick="go({page:'detail',id:'${a.id}',filter:'all'})"><div class="grow"><div class="t">${tagIcon(a)}${esc(a.title)}</div><div class="s">${esc(clsLabel(a))}${a.subject?' · '+esc(a.subject):''} · ${L.done} ${st.done+st.late}/${st.total}${st.late?` · ${L.late} ${st.late}`:''}${a.due?` · 收簿日 ${esc(fmtMD(a.due))}`:''}</div></div>${pend?`<span class="badge" style="background:rgba(10,132,255,.12);color:var(--blue)">尚未收</span>`:st.missing?`<span class="badge red">${st.missing} 人${L.missing}</span>`:`<span class="badge green">全部${L.done}</span>`}<span class="chev">›</span></div>`;});
  return h;}
 // 先揀科目，再只顯示有學生修讀該科的班別
 const classesFor=subject=>classes().filter(c=>studentsOf(c).some(s=>hasSubj(s,subject)));
@@ -256,7 +259,7 @@ function showUndo(msg,onUndo,secs=10){const bar=document.getElementById('undobar
 /* ---- 功課詳情 ---- */
 function viewDetail(){const a=byId(S.assignments,V.id);if(!a){V.page=null;return viewHW();}const st=stats(a);let list=roster(a);
  if(V.filter==='missing')list=list.filter(s=>statusOf(a.id,s.id)==='missing');else if(V.filter==='done')list=list.filter(s=>statusOf(a.id,s.id)!=='missing');
- const L=labelsOf(a);let h=header(tagIcon(a)+a.title,"go({page:null})",`<button class="txt" onclick="editHW('${a.id}')">編輯</button>`);
+ const L=labelsOf(a);let h=header(tagIcon(a)+a.title,"go({page:null})",`<button class="txt" style="font-size:22px" onclick="openHWMenu('${a.id}')">⋯</button>`);
  h+=`<div class="card stats"><div><b>${st.total}</b><span>總人數</span></div><div class="g"><b>${st.done}</b><span>${esc(L.done)}</span></div><div class="o"><b>${st.late}</b><span>${esc(L.late)}</span></div><div class="r"><b>${st.missing}</b><span>${esc(L.missing)}</span></div></div>`;
  const pend=isPending(a);if(pend)h+=`<div class="hint" style="color:var(--blue)">📅 收簿日 ${esc(fmtDate(a.due))} 未到，此功課顯示為「尚未收」，未交總覽暫不計算。</div>`;
  h+=`<div class="pad"><button class="wa big" onclick="go({page:'remind'})" ${st.missing&&!pend?'':'disabled'}>💬 一鍵 WhatsApp 追收（${st.missing} 人${esc(L.missing)}）</button></div>`;
@@ -440,6 +443,16 @@ function loadDemo(){if(S.students.length&&!confirm('會在現有名單加入示�
 function clearAll(){if(!confirm('確定清除本機全部學生、功課及紀錄？此動作無法復原。'))return;if(!confirm('再次確認：真的要清除？'))return;const keep=S.settings;let cloud=false;if(keep.gasUrl)cloud=confirm('亦要清除 Google Sheet 雲端的資料？\n\n「確定」＝ 本機及雲端一併清除（其他裝置亦會被清空）\n「取消」＝ 只清除本機，重新開啟 App 時會從雲端載回');S=blank();S.settings=Object.assign({},keep,{syncedRev:0,cloudVer:0,lastSync:''});if(cloud){S.meta.rev=1;S.meta.editedAt=Date.now();persist();syncSheet(false,true);}else persist();go({tab:'hw',page:null,cls:'all',hwCls:'all',subj:'all',hwSubj:'all'});}
 
 render();
+/* ---- 長按紀錄彈出動作選單 ---- */
+function openHWMenu(aid){const a=byId(S.assignments,aid);if(!a)return;const L=labelsOf(a),st=stats(a);sheet(`<h2>${tagIcon(a)}${esc(a.title)}</h2><div class="hint" style="padding:0 0 10px">${esc(clsLabel(a))}${a.subject?' · '+esc(a.subject):''} · ${esc(fmtDate(a.date))} · ${st.missing} 人${esc(L.missing)}</div><div class="card list" style="margin:0"><button class="item" onclick="closeSheet();go({page:'detail',id:'${a.id}',filter:'all'})">📋 開啟</button><button class="item" onclick="closeSheet();editHW('${a.id}')">✏️ 編輯</button><button class="item" onclick="closeSheet();go({page:'remind',id:'${a.id}'})" ${st.missing&&!isPending(a)?'':'disabled'}>💬 WhatsApp 追收（${st.missing} 人）</button><button class="item" onclick="bulk('${a.id}','done');closeSheet();toast('已全部標為${esc(L.done)}')">✅ 全部標為${esc(L.done)}</button><button class="item" onclick="bulk('${a.id}','missing');closeSheet();toast('已全部標為${esc(L.missing)}')">❌ 全部標為${esc(L.missing)}</button><button class="item" onclick="closeSheet();duplicateHW('${a.id}')">📄 複製為今日新紀錄</button><button class="item" style="color:var(--red)" onclick="delHW('${a.id}')">🗑 刪除（10 秒內可復原）</button></div>`);}
+function duplicateHW(aid){const a=byId(S.assignments,aid);if(!a)return;const b={id:uid(),cls:a.cls,classes:aClasses(a).slice(),tag:a.tag,subject:a.subject,title:a.title,date:today(),due:'',created:Date.now()};S.assignments.push(b);S.records[b.id]={};roster(b).forEach(s=>S.records[b.id][s.id]={status:'done',updatedAt:nowStr()});save();go({page:'detail',id:b.id,filter:'all'});toast('已複製，預設全部'+labelsOf(b).done);}
+let lpT=null,lpEl=null,lpSuppress=false,lpX=0,lpY=0;
+const lpCancel=()=>{clearTimeout(lpT);lpT=null;if(lpEl){lpEl.classList.remove('pressing');lpEl=null;}};
+document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-aid]');if(!el||e.button>0)return;lpCancel();lpEl=el;lpX=e.clientX;lpY=e.clientY;lpT=setTimeout(()=>{lpT=null;lpSuppress=true;el.classList.remove('pressing');if(navigator.vibrate)try{navigator.vibrate(15);}catch(x){}openHWMenu(el.dataset.aid);},450);setTimeout(()=>{if(lpT&&lpEl===el)el.classList.add('pressing');},120);},{passive:true});
+document.addEventListener('pointerup',lpCancel,{passive:true});document.addEventListener('pointercancel',lpCancel,{passive:true});
+document.addEventListener('pointermove',e=>{if(lpT&&(Math.abs(e.clientX-lpX)>10||Math.abs(e.clientY-lpY)>10))lpCancel();},{passive:true});
+document.addEventListener('click',e=>{if(lpSuppress){lpSuppress=false;e.stopPropagation();e.preventDefault();}},true);
+document.addEventListener('contextmenu',e=>{if(e.target.closest('[data-aid]'))e.preventDefault();});
 if(S.settings.gasUrl)pullCloud(false);
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&S.settings.gasUrl)pullCloud(false);});
 if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
