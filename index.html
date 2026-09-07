@@ -92,6 +92,9 @@ nav button.on{color:var(--blue)}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 #toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,10px);background:#333;color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;z-index:30;pointer-events:none;white-space:nowrap}
 #toast.show{opacity:1;transform:translate(-50%,0)}
+#undobar{position:fixed;left:12px;right:12px;bottom:calc(74px + env(safe-area-inset-bottom));background:#1c1c1e;color:#fff;padding:12px 14px;border-radius:14px;font-size:15px;display:flex;align-items:center;gap:10px;z-index:31;box-shadow:0 4px 16px rgba(0,0,0,.3);animation:up .2s ease-out}
+#undobar .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#undobar button{color:#4da3ff;font-weight:700;font-size:16px;padding:6px 10px;white-space:nowrap}
 code{background:rgba(118,118,128,.14);padding:2px 5px;border-radius:5px;font-size:13px}
 .info .t{font-weight:700;font-size:17px}.info .s{color:var(--sub);font-size:14px;margin-top:3px}
 .crow{display:flex;gap:6px;margin-top:6px;align-items:center}
@@ -111,6 +114,7 @@ code{background:rgba(118,118,128,.14);padding:2px 5px;border-radius:5px;font-siz
 <div id="app"></div>
 <div id="sheetWrap" hidden></div>
 <div id="toast"></div>
+<div id="undobar" hidden></div>
 <script>
 /* ===================== 資料 ===================== */
 const KEY='hw-tracker-v1';
@@ -244,7 +248,10 @@ function saveNewHW(){const title=document.getElementById('f-title').value.trim()
  save();closeSheet();if(made.length===1){go({page:'detail',id:made[0].id,filter:'all'});if(nfAll.length)toast('找不到：'+nfAll.join(', '));}else{go({page:null});toast(`已為 ${made.length} 班各建立一項紀錄`);}}
 function editHW(id){const a=byId(S.assignments,id);sheet(`<h2>編輯紀錄</h2>${hwForm(a)}<button class="primary" onclick="saveEditHW('${id}')">儲存</button><button class="danger" onclick="delHW('${id}')">刪除此紀錄</button>`);}
 function saveEditHW(id){const a=byId(S.assignments,id);const t=document.getElementById('f-title').value.trim();if(!t)return;const cs=selClasses();if(!cs.length){alert('請選擇班別');return;}a.title=t;a.classes=cs;a.cls=cs[0];a.subject=selSubj();a.tag=selTag();a.date=document.getElementById('f-date').value||a.date;a.due=document.getElementById('f-due').value||'';save();closeSheet();render();}
-function delHW(id){if(!confirm('確定刪除此功課紀錄？'))return;S.assignments=S.assignments.filter(a=>a.id!==id);delete S.records[id];save();closeSheet();go({page:null});}
+// 刪除紀錄：即時移除，10 秒內可按「復原」還原
+let undoT=null,undoIv=null;
+function delHW(id){const a=byId(S.assignments,id);if(!a)return;const idx=S.assignments.indexOf(a),recs=S.records[id];S.assignments.splice(idx,1);delete S.records[id];save();closeSheet();go({page:null});showUndo(`已刪除「${a.title}」`,()=>{if(byId(S.assignments,a.id))return;S.assignments.splice(Math.min(idx,S.assignments.length),0,a);S.records[a.id]=recs||{};save();render();toast('已還原');});}
+function showUndo(msg,onUndo,secs=10){const bar=document.getElementById('undobar');clearTimeout(undoT);clearInterval(undoIv);let left=secs;bar.innerHTML=`<div class="grow">${esc(msg)}</div><button id="undoBtn">復原（${left}）</button>`;bar.hidden=false;const hide=()=>{clearTimeout(undoT);clearInterval(undoIv);bar.hidden=true;};document.getElementById('undoBtn').onclick=()=>{hide();onUndo();};undoIv=setInterval(()=>{left--;const b=document.getElementById('undoBtn');if(b)b.textContent=`復原（${left}）`;},1000);undoT=setTimeout(hide,secs*1000);}
 
 /* ---- 功課詳情 ---- */
 function viewDetail(){const a=byId(S.assignments,V.id);if(!a){V.page=null;return viewHW();}const st=stats(a);let list=roster(a);
