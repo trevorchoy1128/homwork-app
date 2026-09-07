@@ -89,9 +89,16 @@ nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
 nav button .i{font-size:22px}
 nav button.on{color:var(--blue)}
 #sheetWrap{position:fixed;inset:0;z-index:20}
-.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);cursor:pointer}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);cursor:pointer;opacity:0;transition:opacity .3s ease-out}
+#sheetWrap.open .sheet-bg{opacity:1}
+#sheetWrap.open .sheet{transform:none}
+#app{position:relative;z-index:2;background:var(--bg);min-height:100vh;will-change:transform}
+#app.anim,#prev.anim{transition:transform .32s cubic-bezier(.32,.72,0,1)}
+#app.shadow{box-shadow:-10px 0 28px rgba(0,0,0,.18)}
+#prev{position:fixed;inset:0;z-index:1;background:var(--bg);overflow:hidden;pointer-events:none;will-change:transform}
+#prev::after{content:'';position:absolute;inset:0;background:rgba(0,0,0,.08);pointer-events:none}
 .grabber{width:36px;height:5px;border-radius:3px;background:rgba(120,120,128,.45);margin:-4px auto 12px}
-.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow-y:auto;animation:up .22s ease-out}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow-y:auto;transform:translateY(100%);transition:transform .38s cubic-bezier(.32,.72,0,1);will-change:transform;overscroll-behavior:contain}
 .sheet h2{margin:2px 0 6px;font-size:19px}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 #toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translate(-50%,10px);background:#333;color:#fff;padding:10px 18px;border-radius:999px;font-size:14px;opacity:0;transition:.2s;z-index:30;pointer-events:none;white-space:nowrap}
@@ -115,7 +122,9 @@ code{background:rgba(118,118,128,.14);padding:2px 5px;border-radius:5px;font-siz
 </style>
 </head>
 <body>
+<div id="prev" hidden></div>
 <div id="app"></div>
+<div id="nav"></div>
 <div id="sheetWrap" hidden></div>
 <div id="toast"></div>
 <div id="undobar" hidden></div>
@@ -212,18 +221,34 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);toast('已
 
 /* ===================== 畫面 ===================== */
 let V={tab:'hw',page:null,id:null,filter:'all',cls:'all',hwCls:'all',subj:'all',hwSubj:'all',hwTag:'all',q:'',period:'all',ovMode:'today'};
-function go(p){if('tab' in p||'page' in p)V.sel=null;Object.assign(V,p);render();window.scrollTo(0,0);}
+// 頁面切換：進入下一層由右滑入，返回時由右滑出，似 iOS 原生
+const REDUCED=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const DEPTH={detail:1,today:1,student:1,remind:2};
+let animating=false,animStart=0;
+// 安全網：動畫若因分頁被切到背景而卡住超過 1 秒，強制完成
+const unstick=()=>{if(animating&&Date.now()-animStart>1000)finishAnim();};
+function go(p){unstick();if('tab' in p||'page' in p)V.sel=null;if(!REDUCED&&!animating&&('page' in p)){const d0=DEPTH[V.page]||0,d1=DEPTH[p.page]||0;if(d1>d0)return goForward(p);if(d1<d0)return goBackAnim(p);}Object.assign(V,p);render();window.scrollTo(0,0);}
+const layers=()=>[document.getElementById('app'),document.getElementById('prev')];
+function goForward(p){const[app,prev]=layers();prev.innerHTML=app.innerHTML;prev.classList.remove('anim');prev.style.transform='';prev.hidden=false;animating=true;animStart=Date.now();Object.assign(V,p);render();window.scrollTo(0,0);app.classList.remove('anim');app.classList.add('shadow');app.style.transform='translateX(100%)';nextFrame(()=>{app.classList.add('anim');prev.classList.add('anim');app.style.transform='';prev.style.transform='translateX(-30%)';afterTransition(app,finishAnim,420);});}
+function goBackAnim(p,fromX){const[app,prev]=layers();const saved=Object.assign({},V);Object.assign(V,p);const html=viewHtml();Object.assign(V,saved);prev.innerHTML=html;prev.hidden=false;prev.classList.remove('anim');prev.style.transform=fromX!=null?`translateX(${-30+30*fromX/innerWidth}%)`:'translateX(-30%)';animating=true;animStart=Date.now();app.classList.remove('anim');app.classList.add('shadow');if(fromX!=null)app.style.transform=`translateX(${fromX}px)`;nextFrame(()=>{app.classList.add('anim');prev.classList.add('anim');app.style.transform='translateX(100%)';prev.style.transform='';afterTransition(app,()=>{Object.assign(V,p);V.sel=null;app.classList.remove('anim');app.style.transform='';render();window.scrollTo(0,0);finishAnim();},420);});}
+// 用計時器而非 rAF：背景分頁或個別瀏覽器不觸發 rAF 時亦能完成
+function nextFrame(fn){void document.getElementById('app').offsetWidth;setTimeout(fn,20);}
+// 以 transitionend 結束動畫，另設後備計時器（背景分頁計時器被延遲時亦能完成）
+function afterTransition(el,fn,ms){let done=false;const run=()=>{if(done)return;done=true;el.removeEventListener('transitionend',h);fn();};const h=e=>{if(e.target===el)run();};el.addEventListener('transitionend',h);setTimeout(run,ms);}
+function finishAnim(){const[app,prev]=layers();app.classList.remove('anim','shadow');app.style.transform='';prev.classList.remove('anim');prev.style.transform='';prev.hidden=true;prev.innerHTML='';animating=false;}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
-function sheet(html){const w=document.getElementById('sheetWrap');w.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet"><div class="grabber"></div>${html}</div>`;w.hidden=false;initSheetDrag(w.querySelector('.sheet'));}
-function closeSheet(){const w=document.getElementById('sheetWrap');w.hidden=true;w.innerHTML='';}
-// 向下拖曳收起底部面板（面板已捲到頂時才生效）
-function initSheetDrag(el){let y0=null,dy=0;el.addEventListener('touchstart',e=>{if(el.scrollTop>0||e.target.closest('input,textarea,select')){y0=null;return;}y0=e.touches[0].clientY;dy=0;el.style.transition='none';},{passive:true});
- el.addEventListener('touchmove',e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0&&el.scrollTop===0){el.style.transform=`translateY(${dy}px)`;if(e.cancelable)e.preventDefault();}else if(dy<0){y0=null;el.style.transform='';}},{passive:false});
- const end=()=>{if(y0==null)return;el.style.transition='transform .2s';if(dy>80)closeSheet();else el.style.transform='';y0=null;dy=0;};el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);}
+let sheetTok=0;
+function sheet(html){const w=document.getElementById('sheetWrap');sheetTok++;w.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet"><div class="grabber"></div>${html}</div>`;w.hidden=false;w.classList.remove('open');void w.offsetHeight;if(REDUCED)w.querySelector('.sheet').style.transition='none';w.classList.add('open');initSheetDrag(w.querySelector('.sheet'),w.querySelector('.sheet-bg'));}
+function closeSheet(){const w=document.getElementById('sheetWrap');if(w.hidden)return;const tok=++sheetTok;const el=w.querySelector('.sheet');w.classList.remove('open');if(el&&!REDUCED){el.style.transition='transform .3s cubic-bezier(.32,.72,0,1)';el.style.transform='translateY(110%)';afterTransition(el,()=>{if(tok!==sheetTok)return;w.hidden=true;w.innerHTML='';},380);}else{w.hidden=true;w.innerHTML='';}}
+// 向下拖曳收起底部面板：跟手移動、背景同步變淡，快撥即收起，否則彈回
+function initSheetDrag(el,bg){let y0=null,dy=0,lastY=0,lastT=0,vel=0;el.addEventListener('touchstart',e=>{if(el.scrollTop>0||e.target.closest('input,textarea,select')){y0=null;return;}y0=lastY=e.touches[0].clientY;lastT=Date.now();dy=0;vel=0;el.style.transition='none';bg.style.transition='none';},{passive:true});
+ el.addEventListener('touchmove',e=>{if(y0==null)return;const y=e.touches[0].clientY;dy=y-y0;const now=Date.now();if(now>lastT)vel=(y-lastY)/(now-lastT);lastY=y;lastT=now;if(dy>0&&el.scrollTop===0){el.style.transform=`translateY(${dy}px)`;bg.style.opacity=String(Math.max(0,1-dy/el.offsetHeight));if(e.cancelable)e.preventDefault();}else if(dy<0){y0=null;el.style.transform='';bg.style.opacity='';}},{passive:false});
+ const end=()=>{if(y0==null)return;y0=null;bg.style.transition='';if(dy>el.offsetHeight*0.3||(vel>0.6&&dy>20)){closeSheet();}else{el.style.transition='transform .35s cubic-bezier(.32,.72,0,1)';el.style.transform='';bg.style.opacity='';}dy=0;};el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);}
 function header(title,back,right){return `<header>${back?`<button class="back" onclick="${back}">‹ 返回</button>`:'<span style="min-width:64px"></span>'}<h1>${esc(title)}</h1><div class="hright">${right||''}</div></header>`;}
 function chips(list,cur,key){if(list.length<2)return'';return `<div class="chips"><button class="${cur==='all'?'on':''}" onclick="go({${key}:'all'})">全部</button>${list.map(c=>`<button class="${cur===c?'on':''}" onclick="go({${key}:'${esc(c)}'})">${esc(c)}</button>`).join('')}</div>`;}
 function tabbar(){const t=[['hw','📚','功課'],['students','👥','學生'],['export','📤','匯出'],['settings','⚙️','設定']];return `<nav>${t.map(([k,i,l])=>`<button class="${V.tab===k?'on':''}" onclick="go({tab:'${k}',page:null})"><span class="i">${i}</span>${l}</button>`).join('')}</nav>`;}
-function render(){let h;if(V.page==='detail')h=viewDetail();else if(V.page==='remind')h=viewRemind();else if(V.page==='today')h=viewToday();else if(V.page==='student')h=viewStudent();else if(V.tab==='students')h=viewStudents();else if(V.tab==='export')h=viewExport();else if(V.tab==='settings')h=viewSettings();else h=viewHW();document.getElementById('app').innerHTML=h+tabbar();}
+function viewHtml(){if(V.page==='detail')return viewDetail();if(V.page==='remind')return viewRemind();if(V.page==='today')return viewToday();if(V.page==='student')return viewStudent();if(V.tab==='students')return viewStudents();if(V.tab==='export')return viewExport();if(V.tab==='settings')return viewSettings();return viewHW();}
+function render(){document.getElementById('app').innerHTML=viewHtml();document.getElementById('nav').innerHTML=tabbar();}
 
 /* ---- 功課列表 ---- */
 function viewHW(){const cls=classes();let list=S.assignments.slice().sort((a,b)=>b.date.localeCompare(a.date)||(b.created||0)-(a.created||0));if(V.hwCls!=='all')list=list.filter(a=>inClasses(a,V.hwCls));if(V.hwSubj!=='all')list=list.filter(a=>a.subject===V.hwSubj);if(V.hwTag&&V.hwTag!=='all')list=list.filter(a=>(a.tag||'功課')===V.hwTag);
@@ -450,10 +475,22 @@ function clearAll(){if(!confirm('確定清除本機全部學生、功課及紀�
 
 render();
 /* ---- 從左邊緣向右滑返回（似 iPhone） ---- */
-function goBack(){const w=document.getElementById('sheetWrap');if(!w.hidden){closeSheet();return true;}if(V.page==='remind'){go({page:'detail'});return true;}if(V.page){go({page:null});return true;}if(V.sel){toggleSel();return true;}return false;}
-let swX=null,swY=null,swT=0;
-document.addEventListener('touchstart',e=>{const t=e.touches[0];if(t.clientX<=36){swX=t.clientX;swY=t.clientY;swT=Date.now();}else swX=null;},{passive:true});
-document.addEventListener('touchend',e=>{if(swX==null)return;const t=e.changedTouches[0];const dx=t.clientX-swX,dy=Math.abs(t.clientY-swY);swX=null;if(dx>70&&dy<60&&Date.now()-swT<800)goBack();},{passive:true});
+// 跟手的邊緣返回手勢：頁面隨手指移動，上一頁在底下同步微移，鬆手後以 iOS 曲線完成或彈回
+const backTarget=()=>V.page==='remind'?{page:'detail'}:V.page?{page:null}:null;
+let eg=null;
+document.addEventListener('touchstart',e=>{const t=e.touches[0];if(t.clientX>36)return;unstick();if(animating)return;const w=document.getElementById('sheetWrap');if(!w.hidden){eg={sheet:true,x0:t.clientX,y0:t.clientY};return;}const target=backTarget();if(!target){if(V.sel)eg={sel:true,x0:t.clientX,y0:t.clientY};return;}eg={x0:t.clientX,y0:t.clientY,t0:Date.now(),locked:false,target,lastX:0,lastT:Date.now(),vel:0};},{passive:true});
+document.addEventListener('touchmove',e=>{if(!eg||eg.sheet||eg.sel)return;const t=e.touches[0];const dx=t.clientX-eg.x0,dy=t.clientY-eg.y0;if(!eg.locked){if(Math.abs(dy)>8&&Math.abs(dy)>Math.abs(dx)){eg=null;return;}if(dx<8)return;eg.locked=true;if(REDUCED)return;const[app,prev]=layers();const saved=Object.assign({},V);Object.assign(V,eg.target);prev.innerHTML=viewHtml();Object.assign(V,saved);prev.hidden=false;prev.classList.remove('anim');app.classList.remove('anim');app.classList.add('shadow');animating=true;animStart=Date.now();}
+ if(e.cancelable)e.preventDefault();const x=Math.max(0,dx),now=Date.now();if(now>eg.lastT)eg.vel=(x-eg.lastX)/(now-eg.lastT);eg.lastX=x;eg.lastT=now;if(REDUCED)return;const[app,prev]=layers();app.style.transform=`translateX(${x}px)`;prev.style.transform=`translateX(${-30+30*Math.min(1,x/innerWidth)}%)`;},{passive:false});
+function endEdge(e,cancelled){if(!eg)return;const g=eg;eg=null;const t=e.changedTouches[0];const dx=t.clientX-g.x0,dy=Math.abs(t.clientY-g.y0);
+ if(g.sheet){if(!cancelled&&dx>70&&dy<60)closeSheet();return;}
+ if(g.sel){if(!cancelled&&dx>70&&dy<60)toggleSel();return;}
+ if(!g.locked)return;
+ if(REDUCED){if(!cancelled&&dx>70)go(g.target);return;}
+ const[app,prev]=layers();const commit=!cancelled&&(dx>innerWidth*0.35||(g.vel>0.5&&dx>40));app.classList.add('anim');prev.classList.add('anim');
+ if(commit){app.style.transform='translateX(100%)';prev.style.transform='';afterTransition(app,()=>{Object.assign(V,g.target);V.sel=null;app.classList.remove('anim');app.style.transform='';render();window.scrollTo(0,0);finishAnim();},420);}
+ else{app.style.transform='';prev.style.transform='translateX(-30%)';afterTransition(app,finishAnim,420);}}
+document.addEventListener('touchend',e=>endEdge(e,false),{passive:true});
+document.addEventListener('touchcancel',e=>endEdge(e,true),{passive:true});
 /* ---- 長按紀錄彈出動作選單 ---- */
 function openHWMenu(aid){const a=byId(S.assignments,aid);if(!a)return;const L=labelsOf(a),st=stats(a);sheet(`<h2>${tagIcon(a)}${esc(a.title)}</h2><div class="hint" style="padding:0 0 10px">${esc(clsLabel(a))}${a.subject?' · '+esc(a.subject):''} · ${esc(fmtDate(a.date))} · ${st.missing} 人${esc(L.missing)}</div><div class="card list" style="margin:0"><button class="item" onclick="closeSheet();go({page:'detail',id:'${a.id}',filter:'all'})">📋 開啟</button><button class="item" onclick="closeSheet();editHW('${a.id}')">✏️ 編輯</button><button class="item" onclick="closeSheet();go({page:'remind',id:'${a.id}'})" ${st.missing&&!isPending(a)?'':'disabled'}>💬 WhatsApp 追收（${st.missing} 人）</button><button class="item" onclick="bulk('${a.id}','done');closeSheet();toast('已全部標為${esc(L.done)}')">✅ 全部標為${esc(L.done)}</button><button class="item" onclick="bulk('${a.id}','missing');closeSheet();toast('已全部標為${esc(L.missing)}')">❌ 全部標為${esc(L.missing)}</button><button class="item" onclick="closeSheet();duplicateHW('${a.id}')">📄 複製為今日新紀錄</button><button class="item" style="color:var(--red)" onclick="delHW('${a.id}')">🗑 刪除（10 秒內可復原）</button></div>`);}
 function duplicateHW(aid){const a=byId(S.assignments,aid);if(!a)return;const b={id:uid(),cls:a.cls,classes:aClasses(a).slice(),tag:a.tag,subject:a.subject,title:a.title,date:today(),due:'',created:Date.now()};S.assignments.push(b);S.records[b.id]={};roster(b).forEach(s=>S.records[b.id][s.id]={status:'done',updatedAt:nowStr()});save();go({page:'detail',id:b.id,filter:'all'});toast('已複製，預設全部'+labelsOf(b).done);}
