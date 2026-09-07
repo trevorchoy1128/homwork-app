@@ -89,7 +89,8 @@ nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
 nav button .i{font-size:22px}
 nav button.on{color:var(--blue)}
 #sheetWrap{position:fixed;inset:0;z-index:20}
-.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4)}
+.sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.4);cursor:pointer}
+.grabber{width:36px;height:5px;border-radius:3px;background:rgba(120,120,128,.45);margin:-4px auto 12px}
 .sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;padding:14px 16px calc(env(safe-area-inset-bottom) + 20px);max-height:88vh;overflow-y:auto;animation:up .22s ease-out}
 .sheet h2{margin:2px 0 6px;font-size:19px}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
@@ -213,8 +214,12 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);toast('已
 let V={tab:'hw',page:null,id:null,filter:'all',cls:'all',hwCls:'all',subj:'all',hwSubj:'all',hwTag:'all',q:'',period:'all',ovMode:'today'};
 function go(p){if('tab' in p||'page' in p)V.sel=null;Object.assign(V,p);render();window.scrollTo(0,0);}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1800);}
-function sheet(html){const w=document.getElementById('sheetWrap');w.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet">${html}</div>`;w.hidden=false;}
-function closeSheet(){document.getElementById('sheetWrap').hidden=true;}
+function sheet(html){const w=document.getElementById('sheetWrap');w.innerHTML=`<div class="sheet-bg" onclick="closeSheet()"></div><div class="sheet"><div class="grabber"></div>${html}</div>`;w.hidden=false;initSheetDrag(w.querySelector('.sheet'));}
+function closeSheet(){const w=document.getElementById('sheetWrap');w.hidden=true;w.innerHTML='';}
+// 向下拖曳收起底部面板（面板已捲到頂時才生效）
+function initSheetDrag(el){let y0=null,dy=0;el.addEventListener('touchstart',e=>{if(el.scrollTop>0||e.target.closest('input,textarea,select')){y0=null;return;}y0=e.touches[0].clientY;dy=0;el.style.transition='none';},{passive:true});
+ el.addEventListener('touchmove',e=>{if(y0==null)return;dy=e.touches[0].clientY-y0;if(dy>0&&el.scrollTop===0){el.style.transform=`translateY(${dy}px)`;if(e.cancelable)e.preventDefault();}else if(dy<0){y0=null;el.style.transform='';}},{passive:false});
+ const end=()=>{if(y0==null)return;el.style.transition='transform .2s';if(dy>80)closeSheet();else el.style.transform='';y0=null;dy=0;};el.addEventListener('touchend',end);el.addEventListener('touchcancel',end);}
 function header(title,back,right){return `<header>${back?`<button class="back" onclick="${back}">‹ 返回</button>`:'<span style="min-width:64px"></span>'}<h1>${esc(title)}</h1><div class="hright">${right||''}</div></header>`;}
 function chips(list,cur,key){if(list.length<2)return'';return `<div class="chips"><button class="${cur==='all'?'on':''}" onclick="go({${key}:'all'})">全部</button>${list.map(c=>`<button class="${cur===c?'on':''}" onclick="go({${key}:'${esc(c)}'})">${esc(c)}</button>`).join('')}</div>`;}
 function tabbar(){const t=[['hw','📚','功課'],['students','👥','學生'],['export','📤','匯出'],['settings','⚙️','設定']];return `<nav>${t.map(([k,i,l])=>`<button class="${V.tab===k?'on':''}" onclick="go({tab:'${k}',page:null})"><span class="i">${i}</span>${l}</button>`).join('')}</nav>`;}
@@ -444,12 +449,17 @@ function loadDemo(){if(S.students.length&&!confirm('會在現有名單加入示�
 function clearAll(){if(!confirm('確定清除本機全部學生、功課及紀錄？此動作無法復原。'))return;if(!confirm('再次確認：真的要清除？'))return;const keep=S.settings;let cloud=false;if(keep.gasUrl)cloud=confirm('亦要清除 Google Sheet 雲端的資料？\n\n「確定」＝ 本機及雲端一併清除（其他裝置亦會被清空）\n「取消」＝ 只清除本機，重新開啟 App 時會從雲端載回');S=blank();S.settings=Object.assign({},keep,{syncedRev:0,cloudVer:0,lastSync:''});if(cloud){S.meta.rev=1;S.meta.editedAt=Date.now();persist();syncSheet(false,true);}else persist();go({tab:'hw',page:null,cls:'all',hwCls:'all',subj:'all',hwSubj:'all'});}
 
 render();
+/* ---- 從左邊緣向右滑返回（似 iPhone） ---- */
+function goBack(){const w=document.getElementById('sheetWrap');if(!w.hidden){closeSheet();return true;}if(V.page==='remind'){go({page:'detail'});return true;}if(V.page){go({page:null});return true;}if(V.sel){toggleSel();return true;}return false;}
+let swX=null,swY=null,swT=0;
+document.addEventListener('touchstart',e=>{const t=e.touches[0];if(t.clientX<=36){swX=t.clientX;swY=t.clientY;swT=Date.now();}else swX=null;},{passive:true});
+document.addEventListener('touchend',e=>{if(swX==null)return;const t=e.changedTouches[0];const dx=t.clientX-swX,dy=Math.abs(t.clientY-swY);swX=null;if(dx>70&&dy<60&&Date.now()-swT<800)goBack();},{passive:true});
 /* ---- 長按紀錄彈出動作選單 ---- */
 function openHWMenu(aid){const a=byId(S.assignments,aid);if(!a)return;const L=labelsOf(a),st=stats(a);sheet(`<h2>${tagIcon(a)}${esc(a.title)}</h2><div class="hint" style="padding:0 0 10px">${esc(clsLabel(a))}${a.subject?' · '+esc(a.subject):''} · ${esc(fmtDate(a.date))} · ${st.missing} 人${esc(L.missing)}</div><div class="card list" style="margin:0"><button class="item" onclick="closeSheet();go({page:'detail',id:'${a.id}',filter:'all'})">📋 開啟</button><button class="item" onclick="closeSheet();editHW('${a.id}')">✏️ 編輯</button><button class="item" onclick="closeSheet();go({page:'remind',id:'${a.id}'})" ${st.missing&&!isPending(a)?'':'disabled'}>💬 WhatsApp 追收（${st.missing} 人）</button><button class="item" onclick="bulk('${a.id}','done');closeSheet();toast('已全部標為${esc(L.done)}')">✅ 全部標為${esc(L.done)}</button><button class="item" onclick="bulk('${a.id}','missing');closeSheet();toast('已全部標為${esc(L.missing)}')">❌ 全部標為${esc(L.missing)}</button><button class="item" onclick="closeSheet();duplicateHW('${a.id}')">📄 複製為今日新紀錄</button><button class="item" style="color:var(--red)" onclick="delHW('${a.id}')">🗑 刪除（10 秒內可復原）</button></div>`);}
 function duplicateHW(aid){const a=byId(S.assignments,aid);if(!a)return;const b={id:uid(),cls:a.cls,classes:aClasses(a).slice(),tag:a.tag,subject:a.subject,title:a.title,date:today(),due:'',created:Date.now()};S.assignments.push(b);S.records[b.id]={};roster(b).forEach(s=>S.records[b.id][s.id]={status:'done',updatedAt:nowStr()});save();go({page:'detail',id:b.id,filter:'all'});toast('已複製，預設全部'+labelsOf(b).done);}
 let lpT=null,lpEl=null,lpSuppress=false,lpX=0,lpY=0;
 const lpCancel=()=>{clearTimeout(lpT);lpT=null;if(lpEl){lpEl.classList.remove('pressing');lpEl=null;}};
-document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-aid]');if(!el||e.button>0)return;lpCancel();lpEl=el;lpX=e.clientX;lpY=e.clientY;lpT=setTimeout(()=>{lpT=null;lpSuppress=true;el.classList.remove('pressing');if(navigator.vibrate)try{navigator.vibrate(15);}catch(x){}openHWMenu(el.dataset.aid);},450);setTimeout(()=>{if(lpT&&lpEl===el)el.classList.add('pressing');},120);},{passive:true});
+document.addEventListener('pointerdown',e=>{const el=e.target.closest('[data-aid]');if(!el||e.button>0)return;lpCancel();lpEl=el;lpX=e.clientX;lpY=e.clientY;lpT=setTimeout(()=>{lpT=null;lpSuppress=true;setTimeout(()=>{lpSuppress=false;},600);el.classList.remove('pressing');if(navigator.vibrate)try{navigator.vibrate(15);}catch(x){}openHWMenu(el.dataset.aid);},450);setTimeout(()=>{if(lpT&&lpEl===el)el.classList.add('pressing');},120);},{passive:true});
 document.addEventListener('pointerup',lpCancel,{passive:true});document.addEventListener('pointercancel',lpCancel,{passive:true});
 document.addEventListener('pointermove',e=>{if(lpT&&(Math.abs(e.clientX-lpX)>10||Math.abs(e.clientY-lpY)>10))lpCancel();},{passive:true});
 document.addEventListener('click',e=>{if(lpSuppress){lpSuppress=false;e.stopPropagation();e.preventDefault();}},true);
